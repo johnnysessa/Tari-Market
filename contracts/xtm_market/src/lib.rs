@@ -7,7 +7,6 @@ mod xtm_market {
 
     pub struct XtmMarket {
         xtm_resource: ResourceAddress,
-        platform_fees: Vault,
         platform_payment_address: ComponentAddress,
         listings: BTreeMap<u64, Listing>,
         orders: BTreeMap<u64, Order>,
@@ -46,7 +45,6 @@ mod xtm_market {
         pub fn new(xtm_resource: ResourceAddress, platform_payment_address: ComponentAddress) -> Component<Self> {
             Component::new(Self {
                 xtm_resource,
-                platform_fees: Vault::new_empty(xtm_resource),
                 platform_payment_address,
                 listings: BTreeMap::new(),
                 orders: BTreeMap::new(),
@@ -120,6 +118,7 @@ mod xtm_market {
             self.next_order_id += 1;
             listing.inventory -= 1;
             let seller_payment_address = listing.seller_payment_address;
+            let platform_payment_address = self.platform_payment_address;
             self.orders.insert(order_id, Order {
                 id: order_id,
                 listing_id,
@@ -139,13 +138,10 @@ mod xtm_market {
                 ("xtm_paid", total.to_string()),
                 ("status", "paid".to_string()),
             ]));
-            self.platform_fees.deposit(payment.take(platform_fee));
+            ComponentManager::get(platform_payment_address)
+                .invoke("deposit", args![payment.take(platform_fee)]);
             ComponentManager::get(seller_payment_address).invoke("deposit", args![payment]);
             order_id
-        }
-
-        pub fn withdraw_platform_fees(&mut self) -> Bucket {
-            self.platform_fees.withdraw_all()
         }
 
         pub fn get_platform_payment_address(&self) -> ComponentAddress {

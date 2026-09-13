@@ -15,7 +15,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Wallet-matched Orders received view with new-sale status, amount, timestamp, and automatically decrypted shipping details on the seller's listing device
 - Permanent `xtm_market.sale` Ootle event for seller inventory and order notifications
 - Three-percent seller service fee deducted from the complete item-and-shipping payment; buyer total is unchanged
-- Platform fees controlled by the AllGasNoBrakes Ootle account (`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`)
+- Platform fees deposited directly into the AllGasNoBrakes Ootle account (`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`)
 - Connection to a local Tari Ootle wallet daemon on Esmeralda
 - Wallet-gated checkout with API credentials kept only in memory
 - Local listing creation, inventory, and submitted order history
@@ -27,10 +27,10 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 
 ## Trust boundary
 
-The wallet connection authenticates with a local Esmeralda wallet and reads its default account. Buyer names and shipping addresses are never written to browser storage or contract state as plaintext; previously stored delivery fields are removed when the site loads. The browser encrypts delivery details for the seller and supplies only the encrypted package to `buy`, making it part of the seller's purchased-order record without exposing it publicly. The live component is configured at `component_256649b5849438698f37c43d642a567a6b284ecb7f337d23a3ec54ee91d32daf`. Each listing has a fixed item price and shipping price in XTM; the signed transaction manifest withdraws the exact checkout total from the buyer, then `buy` deposits 3% into the platform-fee vault and atomically deposits 97% into the seller's Ootle account.
+The wallet connection authenticates with a local Esmeralda wallet and reads its default account. Buyer names and shipping addresses are never written to browser storage or contract state as plaintext; previously stored delivery fields are removed when the site loads. The browser encrypts delivery details for the seller and supplies only the encrypted package to `buy`, making it part of the seller's purchased-order record without exposing it publicly. Each listing has a fixed item price and shipping price in XTM; the signed transaction manifest withdraws the exact checkout total from the buyer, then `buy` atomically deposits 3% into the configured platform account and 97% into the seller's Ootle account.
 
 ## Next Ootle milestone
 
 Create listings through the connected wallet, verify a low-value purchase between separate Esmeralda accounts, and connect seller notifications to indexed contract events across browsers.
 
-The verified release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `e2f83e960e43e0f52a77e76677102a8fdfc420c02f95a5b1f2c53d3d64640837`).
+The verified release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `c2758a29cf63dfb9d9d1be6f42e4de67c4417d8141c4443bae9684588cf1c24c`).
