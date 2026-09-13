@@ -1,0 +1,8 @@
+{
+  "network": "esmeralda",
+  "platform_fee_percent": 3,
+  "platform_payment_component": "component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c",
+  "template_address": "template_56b70578f5d0ca5477521b47eca48ec763c10320dc7a4e3255b31fbe75894777",
+  "market_component_address": "component_256649b5849438698f37c43d642a567a6b284ecb7f337d23a3ec54ee91d32daf",
+  "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162"
+}
