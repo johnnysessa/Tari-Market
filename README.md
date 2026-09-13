@@ -29,6 +29,8 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 
 The wallet connection authenticates with a local Esmeralda wallet and reads its default account. Buyer names and shipping addresses are never written to browser storage or contract state as plaintext; previously stored delivery fields are removed when the site loads. The browser encrypts delivery details for the seller and supplies only the encrypted package to `buy`, making it part of the seller's purchased-order record without exposing it publicly. Each listing has a fixed item price and shipping price in XTM; the signed transaction manifest withdraws the exact checkout total from the buyer, then `buy` atomically deposits 3% into the configured platform account and 97% into the seller's Ootle account.
 
+The active Esmeralda deployment uses template `template_0f72672b92965e4862d781de1ce141adf92958aa92ba37eb9df755412d97c49b` and market component `component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15`.
+
 ## Next Ootle milestone
 
 Create listings through the connected wallet, verify a low-value purchase between separate Esmeralda accounts, and connect seller notifications to indexed contract events across browsers.

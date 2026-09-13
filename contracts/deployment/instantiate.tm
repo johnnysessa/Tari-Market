@@ -1,4 +1,4 @@
-use template_56b70578f5d0ca5477521b47eca48ec763c10320dc7a4e3255b31fbe75894777 as XtmMarket;
+use template_0f72672b92965e4862d781de1ce141adf92958aa92ba37eb9df755412d97c49b as XtmMarket;
 
 fn main() {
     XtmMarket::new(
