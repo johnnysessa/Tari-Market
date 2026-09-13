@@ -17,7 +17,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Permanent `xtm_market.sale` Ootle event for seller inventory and order notifications
 - Three-percent seller service fee deducted from the complete item-and-shipping payment; buyer total is unchanged
 - Platform fees deposited directly into the AllGasNoBrakes Ootle account (`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`)
-- Connection to a local Tari Ootle wallet daemon on Esmeralda
+- WalletConnect pairing with a buyer or seller's Tari Asset Vault on Esmeralda
 - Wallet-gated checkout with API credentials kept only in memory
 - Local listing creation, inventory, and submitted order history
 - Seller listing form with a full description, Tari payment address, and image upload with in-browser resizing
@@ -28,7 +28,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 
 ## Trust boundary
 
-The wallet connection authenticates with a local Esmeralda wallet and reads its default account. Buyer names and shipping addresses are never written to browser storage or contract state as plaintext; previously stored delivery fields are removed when the site loads. The browser encrypts delivery details for the seller and supplies only the encrypted package to `buy`, making it part of the seller's purchased-order record without exposing it publicly. Each listing has a fixed item price and shipping price in XTM; the signed transaction manifest withdraws the exact checkout total from the buyer, then `buy` atomically deposits 3% into the configured platform account and 97% into the seller's Ootle account.
+The wallet connection uses WalletConnect and reads the approved wallet's default account without requesting an API key. Buyer names and shipping addresses are never written to browser storage or contract state as plaintext; previously stored delivery fields are removed when the site loads. The browser encrypts delivery details for the seller and supplies only the encrypted package to `buy`, making it part of the seller's purchased-order record without exposing it publicly. Each listing has a fixed item price and shipping price in XTM; the wallet signs an Ootle transaction that withdraws the exact checkout total from the buyer, then `buy` atomically deposits 3% into the configured platform account and 97% into the seller's Ootle account.
 
 The active Esmeralda deployment uses template `template_0f72672b92965e4862d781de1ce141adf92958aa92ba37eb9df755412d97c49b` and market component `component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15`.
 

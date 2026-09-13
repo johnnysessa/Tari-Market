@@ -33,6 +33,11 @@
     .wallet-help a{color:var(--mint)}
     .wallet-error{display:none;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,114,114,.32);border-radius:9px;color:#ffabab;background:rgba(255,114,114,.07);font-size:.82rem;line-height:1.45}
     .wallet-error.show{display:block}
+    .wallet-connect-card{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:13px;background:#090d12}
+    .wallet-connect-card p{margin:0;color:var(--muted);font-size:.86rem;line-height:1.55}
+    .pairing-panel{display:none;margin-top:14px;padding:14px;border:1px solid rgba(104,240,197,.28);border-radius:13px;background:rgba(104,240,197,.04)}
+    .pairing-panel.show{display:block}.pairing-copy{min-width:0}.pairing-copy strong{display:block;margin-bottom:6px}.pairing-copy p{margin:0 0 10px;color:var(--muted);font-size:.79rem;line-height:1.45}.pairing-uri{width:100%;min-height:78px;resize:none;font:500 .7rem/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+    .wallet-step{display:flex;gap:10px;align-items:flex-start;color:var(--muted);font-size:.8rem;line-height:1.45}.wallet-step span:first-child{display:grid;place-items:center;flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:var(--panel2);color:var(--mint);font-weight:800}
     .security-note{display:flex;gap:8px;align-items:start;margin-top:13px;color:var(--muted);font-size:.76rem;line-height:1.45}
     .textarea{min-height:112px;resize:vertical;line-height:1.5}
     .upload-control{position:relative;border:1px dashed #40505e;border-radius:12px;padding:13px;background:#090d12;cursor:pointer;transition:.18s ease;text-transform:none;letter-spacing:0}
@@ -53,6 +58,7 @@
     .privacy-hint{color:var(--muted);font-size:.72rem;line-height:1.4;margin-top:-2px}
     .seller-order{align-items:flex-start}.delivery-address{margin-top:8px;color:var(--text);font-size:.86rem;line-height:1.5;white-space:pre-wrap}.new-sale{display:inline-block;margin-bottom:6px;padding:4px 7px;border-radius:99px;background:rgba(104,240,197,.12);color:var(--mint);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em}
     .button:disabled{cursor:not-allowed;opacity:.58;transform:none}
+    .market-pagination{display:none;align-items:center;justify-content:center;gap:7px;margin:22px 0 6px}.market-pagination.show{display:flex}.page-button{min-width:40px;height:40px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);font:inherit;font-weight:750;cursor:pointer}.page-button:hover{border-color:#4a5a69}.page-button.active{border-color:var(--mint);background:rgba(104,240,197,.11);color:var(--mint)}.page-button:disabled{opacity:.4;cursor:not-allowed}
     @media(max-width:900px){.topbar{height:auto;min-height:68px;padding:10px 0;flex-wrap:wrap;gap:9px}.page-nav{order:3;width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.nav-button{padding:9px 5px}}
     @media(max-width:580px){.top-actions{gap:6px}.wallet-button{font-size:.8rem;padding:9px}.brand{gap:8px}.top-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.top-actions .button{min-width:0;padding:9px 6px;font-size:.76rem}.nav-button{font-size:.75rem}}
   </style>
@@ -61,13 +67,13 @@
   <div class="shell">
     <header class="topbar"><div class="brand"><div class="brandmark">Ӿ</div>XTM Market <span class="tag">Ootle prototype</span></div><nav class="page-nav" aria-label="Primary navigation"><button class="nav-button active" data-page="market" aria-current="page">Market</button><button class="nav-button" data-page="recent">Recent orders</button><button class="nav-button" data-page="received">Orders received</button></nav><div class="top-actions"><button class="button ghost" id="listButton">+ List an item</button><button class="button wallet-button" id="walletButton">Connect Tari wallet</button></div></header>
     <main class="main">
-      <section class="page-view" id="marketView"><section class="intro"><h1>Priced in Tari.<br><span>Paid in Tari.</span></h1><p>Every item has a fixed XTM price, with a live USD reference for easy comparison.</p></section><div class="layout"><section><div class="market-head"><h2>Open listings</h2><span class="count" id="listingCount"></span></div><div class="grid" id="listingGrid"></div></section><aside class="checkout"><h2>Checkout</h2><div class="wallet-state" id="walletState"><span class="live-dot" id="walletDot"></span><span id="walletCheckoutStatus">Tari wallet not connected</span></div><div class="empty" id="checkoutEmpty">Shipping is shown on every listing. Select Buy when you are ready to enter delivery details.</div><div class="summary" id="checkoutSummary"><div class="summary-name" id="summaryName"></div><div class="summary-sub" id="summaryReference"></div><div class="paybox"><small>Total payment</small><div class="pay-amount" id="payAmount"></div><div class="quote-meta"><span>Checkout locked</span><span id="timer">10:00</span></div></div><div class="breakdown"><div class="row"><span>Item price</span><strong id="sumItem"></strong></div><div class="row"><span>Shipping</span><strong id="sumShipping"></strong></div><div class="row"><span>Total USD reference</span><strong id="sumUsd"></strong></div><div class="row"><span>Network</span><strong>Ootle · Esmeralda</strong></div><div class="row address-row" id="addressRow"><span>Seller address</span><div class="payment-address"><span id="sumPaymentAddress"></span><br><button class="copy-address" id="copyAddress" type="button">Copy address</button></div></div></div><div class="buyer-fields"><div class="buyer-title">Shipping details</div><label>Full name<input class="input" id="buyerName" maxlength="100" required autocomplete="off" placeholder="Name for delivery"></label><label>Shipping address<textarea class="input textarea" id="shippingAddress" maxlength="400" required autocomplete="off" placeholder="Street, city, state, ZIP code, and country"></textarea></label><div class="privacy-hint">Encrypted in this browser for the seller, then cleared after payment. Only encrypted data is included with the contract purchase.</div></div><button class="button primary full" id="orderButton">Connect wallet to pay</button><p class="fine" id="paymentNote">Connect an Esmeralda wallet to authorize the item and shipping payment. No transaction is sent without your approval.</p></div></aside></div></section>
+      <section class="page-view" id="marketView"><section class="intro"><h1>Priced in Tari.<br><span>Paid in Tari.</span></h1><p>Every item has a fixed XTM price, with a live USD reference for easy comparison.</p></section><div class="layout"><section><div class="market-head"><h2>Open listings</h2><span class="count" id="listingCount"></span></div><div class="grid" id="listingGrid"></div><nav class="market-pagination" id="marketPagination" aria-label="Marketplace pages"></nav></section><aside class="checkout"><h2>Checkout</h2><div class="wallet-state" id="walletState"><span class="live-dot" id="walletDot"></span><span id="walletCheckoutStatus">Tari wallet not connected</span></div><div class="empty" id="checkoutEmpty">Shipping is shown on every listing. Select Buy when you are ready to enter delivery details.</div><div class="summary" id="checkoutSummary"><div class="summary-name" id="summaryName"></div><div class="summary-sub" id="summaryReference"></div><div class="paybox"><small>Total payment</small><div class="pay-amount" id="payAmount"></div><div class="quote-meta"><span>Checkout locked</span><span id="timer">10:00</span></div></div><div class="breakdown"><div class="row"><span>Item price</span><strong id="sumItem"></strong></div><div class="row"><span>Shipping</span><strong id="sumShipping"></strong></div><div class="row"><span>Total USD reference</span><strong id="sumUsd"></strong></div><div class="row"><span>Network</span><strong>Ootle · Esmeralda</strong></div><div class="row address-row" id="addressRow"><span>Seller address</span><div class="payment-address"><span id="sumPaymentAddress"></span><br><button class="copy-address" id="copyAddress" type="button">Copy address</button></div></div></div><div class="buyer-fields"><div class="buyer-title">Shipping details</div><label>Full name<input class="input" id="buyerName" maxlength="100" required autocomplete="off" placeholder="Name for delivery"></label><label>Shipping address<textarea class="input textarea" id="shippingAddress" maxlength="400" required autocomplete="off" placeholder="Street, city, state, ZIP code, and country"></textarea></label><div class="privacy-hint">Encrypted in this browser for the seller, then cleared after payment. Only encrypted data is included with the contract purchase.</div></div><button class="button primary full" id="orderButton">Connect wallet to pay</button><p class="fine" id="paymentNote">Connect an Esmeralda wallet to authorize the item and shipping payment. No transaction is sent without your approval.</p></div></aside></div></section>
       <section class="orders page-view" id="recentView" hidden><div class="page-heading"><h1>Recent orders</h1><p>Purchases submitted from this browser.</p></div><div class="order-list" id="orderList"></div></section>
       <section class="orders page-view" id="receivedView" hidden><div class="page-heading"><h1>Orders received</h1><p>Sales received by the connected seller wallet.</p></div><div class="order-list" id="sellerOrderList"></div></section>
     </main>
   </div>
   <dialog id="listingDialog"><form id="listingForm"><div class="dialog-head"><div><h2>List an item</h2><div class="summary-sub">Set the item and shipping prices separately in XTM.</div></div><button type="button" class="icon-button" id="closeDialog" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Item name<input class="input" name="name" maxlength="60" required placeholder="e.g. Hardware security key"></label><label class="wide">Description<textarea class="input textarea" name="description" maxlength="500" required placeholder="Describe the item, its condition, and what the buyer receives."></textarea></label><label>Item price in XTM<input class="input" name="price" type="number" min="0.01" step="0.01" required placeholder="50000"></label><label>Shipping in XTM<input class="input" name="shipping" type="number" min="0" step="0.01" value="0" required placeholder="5000"></label><div class="security-note wide"><span aria-hidden="true">%</span><span>A 3% seller service fee is deducted from the item-and-shipping total after a completed sale. The buyer pays no added marketplace fee.</span></div><label>Inventory<input class="input" name="stock" type="number" min="1" step="1" value="1" required></label><label class="wide">Tari payment address<input class="input" name="paymentAddress" minlength="8" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="Paste your Tari wallet address"></label><label class="wide upload-control"><span class="upload-title">Upload item picture</span><span class="upload-help">JPG, PNG, or WebP · up to 5 MB</span><input id="listingImage" name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload item picture"></label><div class="upload-preview wide" id="uploadPreview"><img id="uploadPreviewImage" alt="New listing picture preview"></div></div><div class="field-error" id="listingError" role="alert"></div><div class="dialog-actions"><button type="button" class="button ghost" id="cancelDialog">Cancel</button><button class="button primary" id="publishListing" type="submit">Publish listing</button></div></form></dialog>
-  <dialog id="walletDialog"><form id="walletForm"><div class="dialog-head"><div><h2>Connect Tari wallet</h2><div class="summary-sub">Connect your local Ootle wallet daemon on Esmeralda.</div></div><button type="button" class="icon-button" id="closeWalletDialog" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Wallet daemon URL<input class="input" name="endpoint" type="url" value="http://127.0.0.1:12008/json_rpc" required spellcheck="false"></label><label class="wide">Wallet API key <span class="summary-sub">Optional when authentication is off</span><input class="input" name="apiKey" type="password" placeholder="tw_…" autocomplete="off" spellcheck="false"></label></div><div class="security-note"><span aria-hidden="true">◈</span><span>The API key stays only in this browser tab and is cleared when you disconnect or close it. Only a local wallet URL is accepted.</span></div><div class="wallet-error" id="walletError" role="alert"></div><p class="wallet-help">Walletd must be running on Esmeralda. <a href="https://ootle.tari.com/guides/setup-a-wallet/" target="_blank" rel="noopener noreferrer">Open Tari’s wallet setup guide</a>.</p><div class="dialog-actions"><button type="button" class="button ghost" id="disconnectWallet" hidden>Disconnect</button><button type="button" class="button ghost" id="cancelWallet">Cancel</button><button class="button primary" id="connectWallet" type="submit">Connect wallet</button></div></form></dialog>
+  <dialog id="walletDialog"><form id="walletForm"><div class="dialog-head"><div><h2>Connect Tari wallet</h2><div class="summary-sub">Approve a secure WalletConnect session in Tari Asset Vault.</div></div><button type="button" class="icon-button" id="closeWalletDialog" aria-label="Close">×</button></div><div class="wallet-connect-card"><div class="wallet-step"><span>1</span><div>Select <strong>Connect wallet</strong> below to create a private pairing link.</div></div><div class="wallet-step"><span>2</span><div>Copy the pairing link. Do not scan it with MetaMask or another Ethereum wallet.</div></div><div class="wallet-step"><span>3</span><div>Open Tari Asset Vault, select <strong>Connect with WalletConnect</strong>, paste the link, and approve XTM Market.</div></div></div><div class="pairing-panel" id="pairingPanel"><div class="pairing-copy"><strong>Copy this link into Tari Asset Vault</strong><p>This is a Tari Ootle connection. Opening or scanning the link may send it to the wrong wallet.</p><textarea class="input pairing-uri" id="pairingUri" readonly aria-label="WalletConnect pairing link"></textarea><button class="button small primary" id="copyPairing" type="button">Copy pairing link</button></div></div><div class="security-note"><span aria-hidden="true">◈</span><span>No wallet API key is requested or stored. XTM Market only receives the account address and approvals you grant through WalletConnect.</span></div><div class="wallet-error" id="walletError" role="alert"></div><p class="wallet-help">Your wallet must be connected to the Esmeralda testnet. <a href="https://ootle.tari.com/guides/setup-a-wallet/" target="_blank" rel="noopener noreferrer">Open Tari’s wallet setup guide</a>.</p><div class="dialog-actions"><button type="button" class="button ghost" id="disconnectWallet" hidden>Disconnect</button><button type="button" class="button ghost" id="cancelWallet">Cancel</button><button class="button primary" id="connectWallet" type="submit">Connect wallet</button></div></form></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script>
     const seed=[
@@ -93,8 +99,12 @@
     let orders=JSON.parse(localStorage.getItem('xtm-market-orders')||'[]'),sellerOrders=JSON.parse(localStorage.getItem('xtm-market-seller-orders')||'[]'),scrubbedOrderDetails=false;
     for(const order of orders){if('shippingName' in order||'shippingAddress' in order){delete order.shippingName;delete order.shippingAddress;scrubbedOrderDetails=true}}
     if(scrubbedOrderDetails)localStorage.setItem('xtm-market-orders',JSON.stringify(orders));
-    let selected=null,selectedQuote=null,deadline=0,timerHandle,rpcId=0;
-    let walletConnection={connected:false,endpoint:'',apiKey:'',accountAddress:'',network:''};
+    let selected=null,selectedQuote=null,deadline=0,timerHandle,currentMarketPage=1;
+    const ITEMS_PER_PAGE=8;
+    let walletConnection={connected:false,accountAddress:'',network:'',account:null,session:null,client:null};
+    const WALLETCONNECT_PROJECT_ID='5716089763e762b10c0c252a853a7ae4';
+    const WALLETCONNECT_CHAIN='tari:devnet';
+    const INDEXER_URL='https://ootle-indexer-a.tari.com/';
     const $=s=>document.querySelector(s);
     const pageIds={market:'marketView',recent:'recentView',received:'receivedView'};
     function setPage(page,updateHash=true){
@@ -187,37 +197,85 @@
         reader.readAsDataURL(file)
       })
     }
-    function validateWalletEndpoint(raw){
-      const url=new URL(raw);
-      if(!['127.0.0.1','localhost','[::1]'].includes(url.hostname))throw new Error('For safety, connect only to a wallet running on this device.');
-      if(!url.pathname||url.pathname==='/')url.pathname='/json_rpc';
-      return url.href
+    let walletLibrariesPromise;
+    function loadWalletLibraries(){
+      if(!walletLibrariesPromise)walletLibrariesPromise=import('https://esm.sh/@walletconnect/sign-client@2.23.7?bundle').then(sign=>({SignClient:sign.default||sign.SignClient}));
+      return walletLibrariesPromise
     }
-    async function walletRpc(method,params={},timeoutMs=8000){
-      const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),timeoutMs);
+    async function getWalletClient(){
+      if(walletConnection.client)return walletConnection.client;
+      const {SignClient}=await loadWalletLibraries();
+      const client=await SignClient.init({
+        projectId:WALLETCONNECT_PROJECT_ID,
+        metadata:{name:'XTM Market',description:'Buy and sell goods with Tari on Ootle',url:location.origin,icons:[]}
+      });
+      client.on('session_delete',()=>{walletConnection={connected:false,accountAddress:'',network:'',networkByte:null,account:null,session:null,client};renderWalletState();renderSellerOrders()});
+      walletConnection.client=client;
+      return client
+    }
+    async function walletRequest(method,params={}){
+      if(!walletConnection.client||!walletConnection.session)throw new Error('Connect your Tari wallet first.');
+      return walletConnection.client.request({topic:walletConnection.session.topic,chainId:WALLETCONNECT_CHAIN,request:{method,params}})
+    }
+    async function finishWalletSession(session,client){
+      walletConnection={...walletConnection,client,session};
+      const accountResponse=await walletRequest('tari_getDefaultAccount',{});
+      const account=accountResponse?.account||accountResponse;
+      const sessionAddress=session.namespaces?.tari?.accounts?.[0]?.split(':').slice(2).join(':')||'';
+      const accountAddress=account?.component_address||firstAddress(accountResponse)||sessionAddress;
+      if(!/^component_[0-9a-f]{64}$/i.test(accountAddress))throw new Error('No default Tari account was returned by the wallet.');
+      if(!account?.owner_key_id)throw new Error('The wallet account does not have an owner signing key.');
+      walletConnection={...walletConnection,connected:true,accountAddress,network:'esmeralda',networkByte:null,account};
+      $('#pairingPanel').classList.remove('show');
+      $('#walletDialog').close();renderWalletState();renderSellerOrders();toast('Tari wallet connected')
+    }
+    async function showPairingUri(uri){
+      $('#pairingUri').value=uri;
+      $('#pairingPanel').classList.add('show')
+    }
+    async function restoreWalletSession(){
       try{
-        const headers={'Content-Type':'application/json'};
-        if(walletConnection.apiKey)headers.Authorization='Bearer '+walletConnection.apiKey;
-        const response=await fetch(walletConnection.endpoint,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:++rpcId,method,params}),signal:controller.signal,credentials:'omit'});
-        if(!response.ok)throw new Error('Wallet returned HTTP '+response.status);
-        const payload=await response.json();
-        if(payload.error)throw new Error(payload.error.message||'Wallet rejected the request');
-        return payload.result
-      }catch(error){
-        if(error.name==='AbortError')throw new Error('Wallet connection timed out.');
-        throw error
-      }finally{clearTimeout(timeout)}
+        const client=await getWalletClient(),sessions=client.session.getAll(),session=sessions.find(candidate=>candidate.namespaces?.tari);
+        if(session)await finishWalletSession(session,client)
+      }catch(error){console.warn('WalletConnect session restore failed',error)}
     }
     function manifestText(value){return JSON.stringify(String(value))}
     function atomicTari(value){const amount=Math.round(Number(value)*1_000_000);if(!Number.isSafeInteger(amount)||amount<=0)throw new Error('The XTM amount is invalid.');return amount}
-    async function submitManifest(manifest,summary){
+    function cborHead(major,value){
+      const n=BigInt(value),prefix=major<<5;
+      if(n<24n)return[prefix+Number(n)];
+      if(n<=255n)return[prefix+24,Number(n)];
+      if(n<=65535n)return[prefix+25,Number(n>>8n),Number(n&255n)];
+      if(n<=4294967295n)return[prefix+26,Number(n>>24n)&255,Number(n>>16n)&255,Number(n>>8n)&255,Number(n)&255];
+      if(n<=18446744073709551615n){const out=[prefix+27];for(let shift=56n;shift>=0n;shift-=8n)out.push(Number(n>>shift)&255);return out}
+      const bytes=[];let x=n;while(x){bytes.unshift(Number(x&255n));x>>=8n}return[...cborHead(6,2),...cborHead(2,bytes.length),...bytes]
+    }
+    function cborBytes(bytes){return[...cborHead(2,bytes.length),...bytes]}
+    function cborText(value){const bytes=[...new TextEncoder().encode(String(value))];return[...cborHead(3,bytes.length),...bytes]}
+    function cborAddress(address,tag){const hex=String(address).replace(/^[^_]+_/,'');if(!/^[0-9a-f]{64}$/i.test(hex))throw new Error('The Tari address is invalid.');const bytes=hex.match(/../g).map(part=>parseInt(part,16));return[...cborHead(6,tag),...cborBytes(bytes)]}
+    function literal(bytes){return{Literal:bytes.map(byte=>byte.toString(16).padStart(2,'0')).join('')}}
+    function componentCall(address,method,args){return{CallMethod:{call:{Address:address},method,args}}}
+    function feeInstructions(accountAddress){return[componentCall(accountAddress,'pay_fee',[literal(cborHead(0,MAX_TRANSACTION_FEE))])]}
+    async function networkState(){
+      const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+      try{const response=await fetch(INDEXER_URL+'network',{signal:controller.signal,headers:{Accept:'application/json'}});if(!response.ok)throw new Error();const data=await response.json(),epoch=Number(data.epoch);if(!Number.isSafeInteger(epoch)||epoch<0)throw new Error();return data}
+      catch{throw new Error('Could not read the current Esmeralda epoch. Please try again.')}finally{clearTimeout(timeout)}
+    }
+    async function submitInstructions(instructions,summary){
       if(!window.confirm(summary+'\n\nMaximum network fee: 0.005 XTM\n\nContinue in your connected Tari wallet?'))throw new Error('Payment cancelled.');
-      const submitted=await walletRpc('transactions.submit_manifest',{manifest,variables:{account:walletConnection.accountAddress,market:MARKET_COMPONENT_ADDRESS},max_fee:MAX_TRANSACTION_FEE,dry_run:false},30000);
+      const state=await networkState();
+      walletConnection.networkByte=Number(state.network_byte);
+      const transaction={V1:{network:walletConnection.networkByte,fee_instructions:feeInstructions(walletConnection.accountAddress),instructions,inputs:[],min_epoch:null,max_epoch:Number(state.epoch)+3,is_seal_signer_authorized:true,dry_run:false,blobs:[],nonce:(BigInt(Date.now())*1000000n+BigInt(crypto.getRandomValues(new Uint32Array(1))[0])).toString()}};
+      const submitted=await walletRequest('tari_submitTransaction',{transaction,seal_signer:walletConnection.account.owner_key_id,other_signers:[],signatures:[],detect_inputs:true,detect_inputs_use_unversioned:true,lock_ids:[]});
       const transactionId=submitted?.transaction_id||submitted?.transactionId;
       if(!transactionId)throw new Error('The wallet did not return a transaction ID.');
-      const result=await walletRpc('transactions.wait_result',{transaction_id:transactionId,timeout_secs:120},130000);
-      if(/\"(?:Reject|Rejected|Failed|Abort|Aborted)\"/i.test(JSON.stringify(result)))throw new Error('The transaction was rejected by Ootle.');
-      return{transactionId,result}
+      for(let attempt=0;attempt<60;attempt++){
+        await new Promise(resolve=>setTimeout(resolve,2000));
+        const result=await walletRequest('tari_getTransactionResult',{transaction_id:transactionId}),text=JSON.stringify(result);
+        if(/\"(?:Reject|Rejected|Failed|Abort|Aborted)\"/i.test(text))throw new Error('The transaction was rejected by Ootle.');
+        if(result?.result||/Finalized|Accepted|Commit/i.test(String(result?.status||'')))return{transactionId,result}
+      }
+      throw new Error('The transaction is still pending. Check Tari Asset Vault for its final status.')
     }
     function returnedListingId(result){
       let executionResults=null;
@@ -241,35 +299,27 @@
     }
     async function connectWallet(event){
       event.preventDefault();
-      const form=new FormData(event.currentTarget),button=$('#connectWallet'),errorBox=$('#walletError');
+      const button=$('#connectWallet'),errorBox=$('#walletError');
       errorBox.classList.remove('show');button.disabled=true;button.textContent='Connecting…';
       try{
-        walletConnection={...walletConnection,endpoint:validateWalletEndpoint(String(form.get('endpoint')).trim()),apiKey:String(form.get('apiKey')||'').trim()};
-        const authMethod=await walletRpc('auth.method');
-        if(!walletConnection.apiKey){
-          if(String(authMethod?.method||authMethod||'').toLowerCase()!=='none')throw new Error('This wallet requires an API key. Create one with transaction and account permissions.');
-          const auth=await walletRpc('auth.request',{permissions:['Admin'],credentials:'None'});
-          walletConnection.apiKey=String(auth?.token||'');
-          if(!walletConnection.apiKey)throw new Error('The wallet did not issue a session token.');
-        }
-        const info=await walletRpc('wallet.get_info');
-        const network=String(info?.network||'').toLowerCase();
-        if(!network.includes('esme'))throw new Error('This wallet is not connected to Esmeralda.');
-        const account=await walletRpc('accounts.get_default');
-        const accountAddress=firstAddress(account);
-        if(!accountAddress)throw new Error('No default wallet account was found.');
-        walletConnection={...walletConnection,connected:true,accountAddress,network:info.network};
-        event.currentTarget.elements.apiKey.value='';
-        $('#walletDialog').close();renderWalletState();renderSellerOrders();toast('Tari wallet connected')
+        const client=await getWalletClient(),existing=client.session.getAll().find(candidate=>candidate.namespaces?.tari);
+        if(existing){await finishWalletSession(existing,client);return}
+        const {uri,approval}=await client.connect({requiredNamespaces:{tari:{methods:['tari_getDefaultAccount','tari_submitTransaction','tari_getTransactionResult'],chains:[WALLETCONNECT_CHAIN],events:[]}},sessionProperties:{required_permissions:JSON.stringify([{Accounts:['Read',null]},{Transactions:'Create'},{Transactions:'Read'}]),optional_permissions:'[]'}});
+        if(!uri)throw new Error('WalletConnect did not return a pairing link.');
+        await showPairingUri(uri);button.textContent='Waiting for approval…';
+        const session=await approval();
+        await finishWalletSession(session,client)
       }catch(error){
-        walletConnection={connected:false,endpoint:'',apiKey:'',accountAddress:'',network:''};
-        errorBox.textContent=error.message||'Could not connect to the wallet daemon.';
+        walletConnection={...walletConnection,connected:false,accountAddress:'',network:'',networkByte:null,account:null,session:null};
+        errorBox.textContent=error.message||'The wallet connection was not approved.';
         errorBox.classList.add('show')
       }finally{button.disabled=false;button.textContent='Connect wallet'}
     }
-    function disconnectWallet(){
-      walletConnection={connected:false,endpoint:'',apiKey:'',accountAddress:'',network:''};
-      $('#walletForm').reset();$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false;$('#walletDialog').close();renderWalletState();toast('Wallet disconnected')
+    async function disconnectWallet(){
+      const {client,session}=walletConnection;
+      walletConnection={connected:false,accountAddress:'',network:'',networkByte:null,account:null,session:null,client};
+      try{if(client&&session)await client.disconnect({topic:session.topic,reason:{code:6000,message:'User disconnected'}})}catch{}
+      $('#pairingPanel').classList.remove('show');$('#pairingUri').value='';$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false;$('#walletDialog').close();renderWalletState();renderSellerOrders();toast('Wallet disconnected')
     }
     function buyerDetails(){
       const fields=[$('#buyerName'),$('#shippingAddress')];
@@ -290,9 +340,13 @@
         const encryptedDelivery=await encryptDeliveryDetails(selected.deliveryPublicKey,buyer);
         button.textContent='Waiting for wallet…';
         const chainListingId=Number(selected.chainId||selected.id),amount=atomicTari(v.totalXtm);
-        const manifest=`fn fee_main() {\n    let account = var!["account"];\n    account.pay_fee(${MAX_TRANSACTION_FEE});\n}\n\nfn main() {\n    let account = var!["account"];\n    let market = var!["market"];\n    let payment = account.withdraw(TARI, Amount(${amount}));\n    market.buy(${chainListingId}u64, payment, ${manifestText(encryptedDelivery)});\n}`;
+        const instructions=[
+          componentCall(walletConnection.accountAddress,'withdraw',[literal(cborAddress('resource_0101010101010101010101010101010101010101010101010101010101010101',131)),literal(cborHead(0,amount))]),
+          {PutLastInstructionOutputOnWorkspace:{key:0}},
+          componentCall(MARKET_COMPONENT_ADDRESS,'buy',[literal(cborHead(0,chainListingId)),{Workspace:{id:0,offset:null}},literal(cborText(encryptedDelivery))])
+        ];
         const summary=`Pay ${xtm(v.totalXtm)} for ${selected.name}\nSeller receives: ${xtm(v.totalXtm*.97)}\nMarketplace fee: ${xtm(v.totalXtm*.03)}`;
-        const receipt=await submitManifest(manifest,summary);
+        const receipt=await submitInstructions(instructions,summary);
         recordPaidOrder(receipt.transactionId,encryptedDelivery)
       }catch(error){toast(error.message||'Payment was not approved')}
       finally{button.disabled=false;renderWalletState()}
@@ -308,10 +362,25 @@
         localStorage.setItem('xtm-market-live-rates',JSON.stringify(marketRates));render();
       }catch{}
     }
+    function marketplaceListings(){
+      const isCatalog=item=>seed.some(product=>product.id===item.id),real=listings.filter(item=>!isCatalog(item)),catalogSlots=Math.max(0,seed.length-real.length);
+      return[...real.filter(item=>item.stock>0),...listings.filter(item=>isCatalog(item)&&item.stock>0).slice(0,catalogSlots)]
+    }
+    function renderMarketPagination(totalPages){
+      const nav=$('#marketPagination');
+      if(totalPages<=1){nav.classList.remove('show');nav.innerHTML='';return}
+      let controls=`<button class="page-button" data-market-page="${currentMarketPage-1}" aria-label="Previous marketplace page" ${currentMarketPage===1?'disabled':''}>‹</button>`;
+      for(let page=1;page<=totalPages;page++)controls+=`<button class="page-button ${page===currentMarketPage?'active':''}" data-market-page="${page}" ${page===currentMarketPage?'aria-current="page"':''}>${page}</button>`;
+      controls+=`<button class="page-button" data-market-page="${currentMarketPage+1}" aria-label="Next marketplace page" ${currentMarketPage===totalPages?'disabled':''}>›</button>`;
+      nav.innerHTML=controls;nav.classList.add('show');
+      nav.querySelectorAll('[data-market-page]').forEach(button=>button.onclick=()=>{currentMarketPage=Number(button.dataset.marketPage);render();document.querySelector('.market-head').scrollIntoView({behavior:'smooth',block:'start'})})
+    }
     function render(){
-      $('#listingCount').textContent=listings.filter(x=>x.stock>0).length+' available';
-      $('#listingGrid').innerHTML=listings.filter(x=>x.stock>0).map(item=>{const v=values(item),candidate=item.image?{src:item.image,alt:item.alt||item.name}:catalogImages[item.id],src=candidate&&safeImageSrc(candidate.src),media=src?{src,alt:candidate.alt}:null,purchasable=Boolean(item.chainId&&item.deliveryPublicKey&&item.paymentAddress);const picture=media?`<div class="product-media"><img src="${media.src}" alt="${escapeHtml(media.alt)}" loading="${item.id===1?'eager':'lazy'}" decoding="async"></div>`:'<div class="product-media"><div class="product-placeholder">No image added</div></div>';return `<article class="card" style="--glow:${item.glow||'rgba(104,240,197,.18)'}">${picture}<div class="eyebrow">${item.category||'Community listing'} · XTM fixed</div><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><div class="price"><div><div class="primary-price">${xtm(v.itemXtm)}</div><div class="usd">${money(v.itemUsd)} live reference</div><div class="shipping">Shipping: ${xtm(v.shippingXtm)}</div><div class="stock">${item.stock} in stock</div></div><button class="button small" data-buy="${item.id}" ${purchasable?'':'disabled title="Only seller-published listings can be purchased"'}>${purchasable?'Buy':'Catalog'}</button></div></article>`}).join('');
+      const available=marketplaceListings(),totalPages=Math.max(1,Math.ceil(available.length/ITEMS_PER_PAGE));currentMarketPage=Math.min(Math.max(1,currentMarketPage),totalPages);const pageItems=available.slice((currentMarketPage-1)*ITEMS_PER_PAGE,currentMarketPage*ITEMS_PER_PAGE);
+      $('#listingCount').textContent=available.length+' available'+(totalPages>1?` · page ${currentMarketPage} of ${totalPages}`:'');
+      $('#listingGrid').innerHTML=pageItems.map(item=>{const v=values(item),candidate=item.image?{src:item.image,alt:item.alt||item.name}:catalogImages[item.id],src=candidate&&safeImageSrc(candidate.src),media=src?{src,alt:candidate.alt}:null,purchasable=Boolean(item.chainId&&item.deliveryPublicKey&&item.paymentAddress);const picture=media?`<div class="product-media"><img src="${media.src}" alt="${escapeHtml(media.alt)}" loading="${item.id===1?'eager':'lazy'}" decoding="async"></div>`:'<div class="product-media"><div class="product-placeholder">No image added</div></div>';return `<article class="card" style="--glow:${item.glow||'rgba(104,240,197,.18)'}">${picture}<div class="eyebrow">${item.category||'Community listing'} · XTM fixed</div><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><div class="price"><div><div class="primary-price">${xtm(v.itemXtm)}</div><div class="usd">${money(v.itemUsd)} live reference</div><div class="shipping">Shipping: ${xtm(v.shippingXtm)}</div><div class="stock">${item.stock} in stock</div></div><button class="button small" data-buy="${item.id}" ${purchasable?'':'disabled title="Only seller-published listings can be purchased"'}>${purchasable?'Buy':'Catalog'}</button></div></article>`}).join('');
       document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>selectListing(Number(b.dataset.buy)));
+      renderMarketPagination(totalPages);
       renderOrders();
       renderSellerOrders();
       if(selected){selected=listings.find(x=>x.id===selected.id); selected?renderCheckout():clearCheckout()}
@@ -331,10 +400,11 @@
     window.addEventListener('hashchange',()=>setPage(location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':'market',false));
     const dialog=$('#listingDialog');$('#listButton').onclick=()=>{const address=$('#listingForm').elements.paymentAddress;if(walletConnection.connected&&!address.value)address.value=walletConnection.accountAddress;dialog.showModal()};$('#closeDialog').onclick=$('#cancelDialog').onclick=()=>dialog.close();
     const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#disconnectWallet').onclick=disconnectWallet;
+    $('#copyPairing').onclick=async()=>{const uri=$('#pairingUri').value;if(!uri)return;try{await navigator.clipboard.writeText(uri);toast('Pairing link copied')}catch{toast('Select and copy the pairing link')} };
     $('#listingImage').onchange=e=>{const file=e.target.files[0],preview=$('#uploadPreview'),img=$('#uploadPreviewImage');$('#listingError').textContent='';if(!file){preview.classList.remove('active');img.removeAttribute('src');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){$('#listingError').textContent=file.size>5*1024*1024?'Choose an image smaller than 5 MB.':'Choose a JPG, PNG, or WebP image.';e.target.value='';preview.classList.remove('active');return}const previewUrl=URL.createObjectURL(file);img.src=previewUrl;img.onload=()=>URL.revokeObjectURL(previewUrl);preview.classList.add('active')};
     $('#copyAddress').onclick=async()=>{const address=selected?.paymentAddress;if(!address)return;try{await navigator.clipboard.writeText(address);toast('Payment address copied')}catch{toast('Could not copy the address')}};
-    $('#listingForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,d=new FormData(form),button=$('#publishListing'),errorBox=$('#listingError');errorBox.textContent='';if(!walletConnection.connected){dialog.close();$('#walletDialog').showModal();toast('Connect your Tari wallet before listing');return}button.disabled=true;button.textContent='Preparing listing…';try{const id=Date.now(),name=String(d.get('name')).trim(),description=String(d.get('description')).trim(),price=Number(d.get('price')),shipping=Number(d.get('shipping')),stock=Number(d.get('stock')),paymentAddress=String(d.get('paymentAddress')).trim();if(!/^component_[0-9a-f]{64}$/i.test(paymentAddress))throw new Error('Paste an Ootle Tari wallet address beginning with component_.');const image=await prepareListingImage(d.get('image')),deliveryPublicKey=await generateDeliveryKeyPair(id),usdCents=Math.max(1,Math.round((price+shipping)*xtmRate()*100));const manifest=`fn fee_main() {\n    let account = var!["account"];\n    account.pay_fee(${MAX_TRANSACTION_FEE});\n}\n\nfn main() {\n    let market = var!["market"];\n    market.create_listing(${manifestText(name)}, ${usdCents}u64, Amount(${atomicTari(price)}), Amount(${shipping>0?atomicTari(shipping):0}), Address(${manifestText(paymentAddress)}), ${manifestText(deliveryPublicKey)}, ${stock}u64);\n}`;button.textContent='Waiting for wallet…';const receipt=await submitManifest(manifest,`Publish ${name} for ${xtm(price)} plus ${xtm(shipping)} shipping`),chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('The listing transaction finalized, but its listing ID could not be read.');const listing={id,chainId,name,description,price,shipping,stock,paymentAddress,deliveryPublicKey,category:'Community listing',image,alt:name,glow:'rgba(104,240,197,.2)'};listings.unshift(listing);if(!saveListings()){listings.shift();return}form.reset();$('#uploadPreview').classList.remove('active');$('#uploadPreviewImage').removeAttribute('src');dialog.close();render();toast('Listing published on Ootle')}catch(problem){errorBox.textContent=problem.message||'Could not publish this listing.'}finally{button.disabled=false;button.textContent='Publish listing'}};
-    render();renderWalletState();setPage(location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':'market',false);refreshRates();setInterval(refreshRates,60000);
+    $('#listingForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,d=new FormData(form),button=$('#publishListing'),errorBox=$('#listingError');errorBox.textContent='';if(!walletConnection.connected){dialog.close();$('#walletDialog').showModal();toast('Connect your Tari wallet before listing');return}button.disabled=true;button.textContent='Preparing listing…';try{const id=Date.now(),name=String(d.get('name')).trim(),description=String(d.get('description')).trim(),price=Number(d.get('price')),shipping=Number(d.get('shipping')),stock=Number(d.get('stock')),paymentAddress=String(d.get('paymentAddress')).trim();if(!/^component_[0-9a-f]{64}$/i.test(paymentAddress))throw new Error('Paste an Ootle Tari wallet address beginning with component_.');const image=await prepareListingImage(d.get('image')),deliveryPublicKey=await generateDeliveryKeyPair(id),usdCents=Math.max(1,Math.round((price+shipping)*xtmRate()*100)),instructions=[componentCall(MARKET_COMPONENT_ADDRESS,'create_listing',[literal(cborText(name)),literal(cborHead(0,usdCents)),literal(cborHead(0,atomicTari(price))),literal(cborHead(0,shipping>0?atomicTari(shipping):0)),literal(cborAddress(paymentAddress,128)),literal(cborText(deliveryPublicKey)),literal(cborHead(0,stock))])];button.textContent='Waiting for wallet…';const receipt=await submitInstructions(instructions,`Publish ${name} for ${xtm(price)} plus ${xtm(shipping)} shipping`),chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('The listing transaction finalized, but its listing ID could not be read.');const listing={id,chainId,name,description,price,shipping,stock,paymentAddress,deliveryPublicKey,category:'Community listing',image,alt:name,glow:'rgba(104,240,197,.2)'};listings.unshift(listing);currentMarketPage=1;if(!saveListings()){listings.shift();return}form.reset();$('#uploadPreview').classList.remove('active');$('#uploadPreviewImage').removeAttribute('src');dialog.close();render();toast('Listing published on Ootle')}catch(problem){errorBox.textContent=problem.message||'Could not publish this listing.'}finally{button.disabled=false;button.textContent='Publish listing'}};
+    render();renderWalletState();setPage(location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':'market',false);refreshRates();setInterval(refreshRates,60000);restoreWalletSession();
     const modelContext=document.modelContext;
     if(modelContext?.registerTool){
       try{void Promise.resolve(modelContext.registerTool({name:'quote_listing',title:'Quote listing',description:'Read the fixed XTM price and live USD reference for one marketplace listing.',inputSchema:{type:'object',properties:{listing_id:{type:'number'}},required:['listing_id'],additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input.listing_id!=='number')throw new Error('listing_id must be a number');const item=listings.find(x=>x.id===input.listing_id);if(!item)throw new Error('Listing not found');return{listing_id:item.id,listing:item.name,...values(item)}}})).catch(()=>{})}catch{}
