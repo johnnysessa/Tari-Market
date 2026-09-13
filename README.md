@@ -37,3 +37,7 @@ The active Esmeralda deployment uses template `template_0f72672b92965e4862d781de
 Create listings through the connected wallet, verify a low-value purchase between separate Esmeralda accounts, and connect seller notifications to indexed contract events across browsers.
 
 The verified release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `c2758a29cf63dfb9d9d1be6f42e4de67c4417d8141c4443bae9684588cf1c24c`).
+
+## License
+
+XTM Market is open-source software released under the [MIT License](LICENSE).
