@@ -13,6 +13,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Automatic per-listing delivery encryption; sellers do not enter or manage an encryption key
 - Encrypted buyer name and shipping address attached to the purchased order for the seller
 - Wallet-matched Orders received view with new-sale status, amount, timestamp, and automatically decrypted shipping details on the seller's listing device
+- Top navigation for the marketplace, recent buyer orders, and seller orders received
 - Permanent `xtm_market.sale` Ootle event for seller inventory and order notifications
 - Three-percent seller service fee deducted from the complete item-and-shipping payment; buyer total is unchanged
 - Platform fees deposited directly into the AllGasNoBrakes Ootle account (`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`)
