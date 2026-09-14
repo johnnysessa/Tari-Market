@@ -38,6 +38,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Wallet-gated checkout with API credentials kept only in memory
 - Local listing creation, inventory, and submitted order history
 - Seller listing form with a full description, Tari payment address, and up to eight item photos with in-browser resizing, removable previews, a cover photo, and buyer-facing gallery controls
+- Clickable listing photos that open a full product-detail view with a large gallery, complete description, pricing, stock, escrow protection, seller wallet identity, trust score, review count, and Buy/Profile actions
 - Seller payment address shown at checkout with one-click copy
 - Original catalog photography for all six example listings
 - Six product listings featuring Nintendo Switch 2, Mac mini, AMD Radeon RX 9070 GRE, Sony BRAVIA 8 II OLED TV, iPhone 18 Pro Max, and PlayStation 5 Pro
