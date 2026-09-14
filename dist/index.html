@@ -102,12 +102,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script>
     const seed=[
-      {id:1,name:'Nintendo Switch 2',description:'New Nintendo Switch 2 console with dock and controllers.',price:265000,shipping:9500,stock:6,category:'Gaming',sampleTrust:{score:4.9,count:128},image:'assets/nintendo-switch-2.webp',alt:'A real Nintendo Switch 2 console seated in its dock',glow:'rgba(104,240,197,.2)'},
-      {id:2,name:'Mac mini',description:'Compact Apple Mac mini desktop with power cable.',price:354000,shipping:7100,stock:3,category:'Computers',sampleTrust:{score:4.7,count:64},image:'assets/mac-mini.webp',alt:'A real silver Mac mini held in one hand',glow:'rgba(255,184,92,.18)'},
-      {id:3,name:'AMD Radeon™ RX 9070 GRE',description:'Triple-fan AMD Radeon RX 9070 GRE graphics card for a desktop gaming PC.',price:354000,shipping:10600,stock:4,category:'PC hardware',sampleTrust:{score:4.8,count:91},image:'assets/amd-gpu.webp',alt:'A real AMD Radeon RX 9070 GRE triple-fan graphics card on a desk',glow:'rgba(114,143,255,.2)'},
-      {id:4,name:'Sony BRAVIA 8 II 77" OLED TV',description:'Sony 77-inch BRAVIA 8 II OLED 4K smart TV with a slim tabletop stand.',price:768000,shipping:70800,stock:5,category:'Home theater',sampleTrust:{score:4.6,count:37},image:'assets/sony-large-screen-tv.webp',alt:'A real Sony BRAVIA 8 II OLED television in a living room',glow:'rgba(104,240,197,.2)'},
-      {id:5,name:'iPhone 18 Pro Max',description:'Large-screen iPhone 18 Pro Max in Apple’s burgundy finish.',price:649000,shipping:7100,stock:2,category:'Phones',sampleTrust:{score:5.0,count:22},image:'assets/iphone-18-plus.webp',alt:'Apple iPhone 18 Pro and iPhone 18 Pro Max in burgundy',glow:'rgba(255,184,92,.18)'},
-      {id:6,name:'PlayStation 5 Pro',description:'PlayStation 5 Pro console with a wireless controller.',price:443000,shipping:14200,stock:7,category:'Gaming',sampleTrust:{score:4.5,count:53},image:'assets/playstation-5-pro.webp',alt:'A real PlayStation 5 Pro console with a DualSense controller',glow:'rgba(114,143,255,.2)'}
+      {id:1,name:'Nintendo Switch 2',description:'New Nintendo Switch 2 console with dock and controllers.',price:265000,shipping:9500,stock:6,category:'Gaming',sampleTrust:{score:4.8,count:4},image:'assets/nintendo-switch-2.webp',alt:'A real Nintendo Switch 2 console seated in its dock',glow:'rgba(104,240,197,.2)'},
+      {id:2,name:'Mac mini',description:'Compact Apple Mac mini desktop with power cable.',price:354000,shipping:7100,stock:3,category:'Computers',sampleTrust:{score:4.7,count:3},image:'assets/mac-mini.webp',alt:'A real silver Mac mini held in one hand',glow:'rgba(255,184,92,.18)'},
+      {id:3,name:'AMD Radeon™ RX 9070 GRE',description:'Triple-fan AMD Radeon RX 9070 GRE graphics card for a desktop gaming PC.',price:354000,shipping:10600,stock:4,category:'PC hardware',sampleTrust:{score:4.8,count:5},image:'assets/amd-gpu.webp',alt:'A real AMD Radeon RX 9070 GRE triple-fan graphics card on a desk',glow:'rgba(114,143,255,.2)'},
+      {id:4,name:'Sony BRAVIA 8 II 77" OLED TV',description:'Sony 77-inch BRAVIA 8 II OLED 4K smart TV with a slim tabletop stand.',price:768000,shipping:70800,stock:5,category:'Home theater',sampleTrust:{score:4.5,count:2},image:'assets/sony-large-screen-tv.webp',alt:'A real Sony BRAVIA 8 II OLED television in a living room',glow:'rgba(104,240,197,.2)'},
+      {id:5,name:'iPhone 18 Pro Max',description:'Large-screen iPhone 18 Pro Max in Apple’s burgundy finish.',price:649000,shipping:7100,stock:2,category:'Phones',sampleTrust:{score:5.0,count:3},image:'assets/iphone-18-plus.webp',alt:'Apple iPhone 18 Pro and iPhone 18 Pro Max in burgundy',glow:'rgba(255,184,92,.18)'},
+      {id:6,name:'PlayStation 5 Pro',description:'PlayStation 5 Pro console with a wireless controller.',price:443000,shipping:14200,stock:7,category:'Gaming',sampleTrust:{score:4.5,count:4},image:'assets/playstation-5-pro.webp',alt:'A real PlayStation 5 Pro console with a DualSense controller',glow:'rgba(114,143,255,.2)'}
     ];
     const catalogImages={
       1:{src:'assets/nintendo-switch-2.webp',alt:'A real Nintendo Switch 2 console seated in its dock'},
@@ -118,12 +118,12 @@
       6:{src:'assets/playstation-5-pro.webp',alt:'A real PlayStation 5 Pro console with a DualSense controller'}
     };
     const sampleReviews={
-      1:[{stars:5,comment:'Console arrived exactly as described and was packed securely.',when:'Verified purchase'},{stars:5,comment:'Fast shipping and clear updates throughout the sale.',when:'Verified purchase'}],
-      2:[{stars:5,comment:'The Mac mini was in excellent condition and setup was easy.',when:'Verified purchase'},{stars:4,comment:'Accurate listing and careful packaging.',when:'Verified purchase'}],
-      3:[{stars:5,comment:'GPU passed every test and matched the photos.',when:'Verified purchase'}],
-      4:[{stars:5,comment:'Seller coordinated delivery well and the TV arrived safely.',when:'Verified purchase'}],
-      5:[{stars:5,comment:'Responsive seller and the phone was exactly as listed.',when:'Verified purchase'}],
-      6:[{stars:4,comment:'Good communication and secure packaging.',when:'Verified purchase'}]
+      1:[{stars:5,comment:'Console arrived exactly as described and was packed securely.'},{stars:5,comment:'Fast shipping and clear updates throughout the sale.'},{stars:5,comment:'Everything was sealed and the serial number matched the listing.'},{stars:4,comment:'Good transaction. Shipping took one extra day, but the seller kept me updated.'}],
+      2:[{stars:5,comment:'The Mac mini was in excellent condition and setup was easy.'},{stars:4,comment:'Accurate listing and careful packaging.'},{stars:5,comment:'Seller answered my questions before purchase and shipped the next morning.'}],
+      3:[{stars:5,comment:'GPU passed every test and matched the photos.'},{stars:5,comment:'Very well protected for shipping and no damage to the box.'},{stars:5,comment:'Card runs quietly and the seller included the original accessories.'},{stars:4,comment:'Works as expected. Communication could have been a little faster.'},{stars:5,comment:'Smooth sale from checkout through delivery.'}],
+      4:[{stars:5,comment:'Seller coordinated delivery well and the TV arrived safely.'},{stars:4,comment:'Picture quality is excellent. Delivery scheduling took a little longer than expected.'}],
+      5:[{stars:5,comment:'Responsive seller and the phone was exactly as listed.'},{stars:5,comment:'Battery health and condition matched the description.'},{stars:5,comment:'Quick shipment, secure packaging, and no activation issues.'}],
+      6:[{stars:5,comment:'Console was clean, complete, and shipped quickly.'},{stars:4,comment:'Good communication and secure packaging.'},{stars:5,comment:'Exactly as pictured and the controller works perfectly.'},{stars:4,comment:'Solid transaction. Tracking was added a day after shipment.'}]
     };
     const savedListings=JSON.parse(localStorage.getItem('xtm-market-listings')||'null');
     const savedCatalogStock=new Map((savedListings||[]).filter(item=>seed.some(product=>product.id===item.id)).map(item=>[item.id,item.stock]));
