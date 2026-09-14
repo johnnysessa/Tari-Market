@@ -43,7 +43,7 @@ The prior Esmeralda component (`component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69
 
 Build and publish v0.2, instantiate the new escrow component, configure its address in the web app, and verify a low-value escrow purchase between separate Esmeralda accounts. Test buyer release, dispute/refund, seller timeout, and unauthorized-caller rejection before using meaningful funds.
 
-The existing `contracts/artifacts/xtm_market.wasm` file is the superseded v0.1 direct-payment artifact and must not be deployed as escrow.
+The verified v0.2 escrow release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). Publish it through the Tari Wallet Web UI, which performs the required WASM optimization before submitting it to Esmeralda.
 
 ## License
 

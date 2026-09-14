@@ -1,4 +1,7 @@
-use template_0f72672b92965e4862d781de1ce141adf92958aa92ba37eb9df755412d97c49b as XtmMarket;
+// Replace this placeholder with the v0.2 template address returned by the
+// Esmeralda wallet after publishing contracts/artifacts/xtm_market.wasm.
+// Do not use the superseded v0.1 template address.
+use template_REPLACE_WITH_V0_2_TEMPLATE_ADDRESS as XtmMarket;
 
 fn main() {
     XtmMarket::new(
