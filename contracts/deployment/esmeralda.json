@@ -1,7 +1,7 @@
 {
   "network": "esmeralda",
-  "contract_version": "0.3.0-source",
-  "status": "v0.3_trust_upgrade_pending_publish",
+  "contract_version": "0.4.0-source",
+  "status": "v0.4_reviews_moderation_upgrade_pending_publish",
   "platform_fee_percent": 3,
   "platform_payment_component": "component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c",
   "template_address": "template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac",

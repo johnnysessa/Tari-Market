@@ -16,6 +16,7 @@ mod xtm_market {
         orders: BTreeMap<u64, Order>,
         seller_trust: BTreeMap<String, SellerTrust>,
         order_ratings: BTreeMap<u64, u64>,
+        seller_reviews: BTreeMap<u64, SellerReview>,
         next_listing_id: u64,
         next_order_id: u64,
     }
@@ -59,6 +60,19 @@ mod xtm_market {
         pub rating_count: u64,
     }
 
+    #[derive(Clone)]
+    pub struct SellerReview {
+        pub order_id: u64,
+        pub seller_payment_address: ComponentAddress,
+        pub stars: u64,
+        pub comment: String,
+        pub created_epoch: u64,
+        pub disputed: bool,
+        pub dispute_reason: String,
+        pub removed: bool,
+        pub moderation_note: String,
+    }
+
     impl XtmMarket {
         pub fn new(
             xtm_resource: ResourceAddress,
@@ -72,6 +86,7 @@ mod xtm_market {
                 orders: BTreeMap::new(),
                 seller_trust: BTreeMap::new(),
                 order_ratings: BTreeMap::new(),
+                seller_reviews: BTreeMap::new(),
                 next_listing_id: 1,
                 next_order_id: 1,
             })
@@ -84,10 +99,13 @@ mod xtm_market {
                     .method("open_dispute", rule!(allow_all))
                     .method("claim_after_timeout", rule!(allow_all))
                     .method("rate_seller", rule!(allow_all))
+                    .method("review_seller", rule!(allow_all))
+                    .method("dispute_review", rule!(allow_all))
                     .method("get_listing", rule!(allow_all))
                     .method("get_order", rule!(allow_all))
                     .method("get_seller_trust", rule!(allow_all))
                     .method("get_order_rating", rule!(allow_all))
+                    .method("get_review", rule!(allow_all))
                     .method("get_platform_payment_address", rule!(allow_all)),
             )
             .with_owner_rule(OwnerRule::OwnedBySigner)
@@ -335,10 +353,17 @@ mod xtm_market {
         // A buyer may rate the seller once, from one to five stars, only after a
         // successful escrow release. Refunded orders cannot create a rating.
         pub fn rate_seller(&mut self, order_id: u64, stars: u64) {
+            self.review_seller(order_id, stars, String::new());
+        }
+
+        // A verified review combines the wallet-bound rating with an optional
+        // public buyer comment. One completed, non-refunded order gets one review.
+        pub fn review_seller(&mut self, order_id: u64, stars: u64, comment: String) {
             assert!(
                 (1..=5).contains(&stars),
                 "Rating must be between one and five stars"
             );
+            assert!(comment.len() <= 500, "Review comment is too long");
             assert!(
                 !self.order_ratings.contains_key(&order_id),
                 "This order has already been rated"
@@ -368,6 +393,25 @@ mod xtm_market {
             let rating_count = trust.rating_count;
             let total_stars = trust.total_stars;
             self.order_ratings.insert(order_id, stars);
+            self.seller_reviews.insert(
+                order_id,
+                SellerReview {
+                    order_id,
+                    seller_payment_address: self
+                        .orders
+                        .get(&order_id)
+                        .expect("Order not found")
+                        .seller_payment_address
+                        .clone(),
+                    stars,
+                    comment,
+                    created_epoch: Consensus::current_epoch(),
+                    disputed: false,
+                    dispute_reason: String::new(),
+                    removed: false,
+                    moderation_note: String::new(),
+                },
+            );
 
             emit_event(
                 "xtm_market.seller_rated",
@@ -377,6 +421,103 @@ mod xtm_market {
                     ("stars", stars.to_string()),
                     ("rating_count", rating_count.to_string()),
                     ("total_stars", total_stars.to_string()),
+                ]),
+            );
+        }
+
+        // Only the reviewed seller may ask the marketplace owner to examine a
+        // review. The review remains visible, marked as disputed, until decided.
+        pub fn dispute_review(&mut self, order_id: u64, reason: String) {
+            assert!(!reason.is_empty(), "A dispute reason is required");
+            assert!(reason.len() <= 500, "Dispute reason is too long");
+            let signer = CallerContext::transaction_signer_public_key();
+            let order = self.orders.get(&order_id).expect("Order not found");
+            let listing = self
+                .listings
+                .get(&order.listing_id)
+                .expect("Listing not found");
+            assert_eq!(signer, listing.seller, "Only the seller may dispute this review");
+            let review = self
+                .seller_reviews
+                .get_mut(&order_id)
+                .expect("Review not found");
+            assert!(!review.removed, "Review is already removed");
+            assert!(!review.disputed, "Review is already disputed");
+            review.disputed = true;
+            review.dispute_reason = reason;
+            emit_event(
+                "xtm_market.review_disputed",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("seller", review.seller_payment_address.to_string()),
+                ]),
+            );
+        }
+
+        // Owner-only. Removing a review also removes its stars from the public
+        // aggregate. Keeping it closes the dispute without changing the score.
+        pub fn resolve_review_dispute(
+            &mut self,
+            order_id: u64,
+            remove_review: bool,
+            moderation_note: String,
+        ) {
+            assert!(moderation_note.len() <= 500, "Moderation note is too long");
+            let review = self
+                .seller_reviews
+                .get(&order_id)
+                .expect("Review not found");
+            assert!(review.disputed, "Review is not disputed");
+            if remove_review {
+                self.remove_review_internal(order_id, moderation_note);
+            } else {
+                let review = self
+                    .seller_reviews
+                    .get_mut(&order_id)
+                    .expect("Review not found");
+                review.disputed = false;
+                review.moderation_note = moderation_note;
+                emit_event(
+                    "xtm_market.review_retained",
+                    Metadata::from_iter([("order_id", order_id.to_string())]),
+                );
+            }
+        }
+
+        // Owner-only removal is also available for illegal, abusive, fraudulent,
+        // or otherwise policy-violating content before a seller files a dispute.
+        pub fn remove_review(&mut self, order_id: u64, moderation_note: String) {
+            assert!(moderation_note.len() <= 500, "Moderation note is too long");
+            self.remove_review_internal(order_id, moderation_note);
+        }
+
+        fn remove_review_internal(&mut self, order_id: u64, moderation_note: String) {
+            let (seller_key, stars) = {
+                let review = self
+                    .seller_reviews
+                    .get(&order_id)
+                    .expect("Review not found");
+                assert!(!review.removed, "Review is already removed");
+                (review.seller_payment_address.to_string(), review.stars)
+            };
+            let trust = self
+                .seller_trust
+                .get_mut(&seller_key)
+                .expect("Seller trust record not found");
+            trust.total_stars -= stars;
+            trust.rating_count -= 1;
+            let review = self
+                .seller_reviews
+                .get_mut(&order_id)
+                .expect("Review not found");
+            review.removed = true;
+            review.disputed = false;
+            review.moderation_note = moderation_note;
+            emit_event(
+                "xtm_market.review_removed",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("seller", seller_key),
                 ]),
             );
         }
@@ -458,6 +599,10 @@ mod xtm_market {
 
         pub fn get_order_rating(&self, order_id: u64) -> Option<u64> {
             self.order_ratings.get(&order_id).copied()
+        }
+
+        pub fn get_review(&self, order_id: u64) -> Option<SellerReview> {
+            self.seller_reviews.get(&order_id).cloned()
         }
     }
 }
