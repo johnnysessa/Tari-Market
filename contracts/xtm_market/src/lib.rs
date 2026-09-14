@@ -95,10 +95,9 @@ mod xtm_market {
                     .method("buy", rule!(allow_all))
                     .method("create_listing", rule!(allow_all))
                     .method("mark_shipped", rule!(allow_all))
-                    .method("confirm_receipt", rule!(allow_all))
+                    .method("confirm_receipt_and_review", rule!(allow_all))
                     .method("open_dispute", rule!(allow_all))
                     .method("claim_after_timeout", rule!(allow_all))
-                    .method("rate_seller", rule!(allow_all))
                     .method("review_seller", rule!(allow_all))
                     .method("dispute_review", rule!(allow_all))
                     .method("get_listing", rule!(allow_all))
@@ -293,7 +292,19 @@ mod xtm_market {
             );
         }
 
-        pub fn confirm_receipt(&mut self, order_id: u64) {
+        // Buyer receipt confirmation, verified feedback, and seller payment are
+        // one atomic transaction. A missing or invalid review prevents release.
+        pub fn confirm_receipt_and_review(&mut self, order_id: u64, stars: u64, comment: String) {
+            assert!(
+                (1..=5).contains(&stars),
+                "Rating must be between one and five stars"
+            );
+            assert!(!comment.trim().is_empty(), "A review comment is required");
+            assert!(comment.len() <= 500, "Review comment is too long");
+            assert!(
+                !self.order_ratings.contains_key(&order_id),
+                "This order has already been rated"
+            );
             let signer = CallerContext::transaction_signer_public_key();
             {
                 let order = self.orders.get(&order_id).expect("Order not found");
@@ -304,7 +315,8 @@ mod xtm_market {
                 );
                 assert!(!order.settled, "Order is already settled");
             }
-            self.release_to_seller(order_id, "buyer_confirmed");
+            self.release_to_seller(order_id, "buyer_confirmed_with_review");
+            self.review_seller(order_id, stars, comment);
         }
 
         pub fn open_dispute(&mut self, order_id: u64) {
@@ -350,19 +362,15 @@ mod xtm_market {
             self.release_to_seller(order_id, "timeout_elapsed");
         }
 
-        // A buyer may rate the seller once, from one to five stars, only after a
-        // successful escrow release. Refunded orders cannot create a rating.
-        pub fn rate_seller(&mut self, order_id: u64, stars: u64) {
-            self.review_seller(order_id, stars, String::new());
-        }
-
-        // A verified review combines the wallet-bound rating with an optional
-        // public buyer comment. One completed, non-refunded order gets one review.
+        // A verified review combines the wallet-bound rating with a required
+        // public buyer comment. This also supports orders released by timeout.
+        // One completed, non-refunded order gets one review.
         pub fn review_seller(&mut self, order_id: u64, stars: u64, comment: String) {
             assert!(
                 (1..=5).contains(&stars),
                 "Rating must be between one and five stars"
             );
+            assert!(!comment.trim().is_empty(), "A review comment is required");
             assert!(comment.len() <= 500, "Review comment is too long");
             assert!(
                 !self.order_ratings.contains_key(&order_id),
@@ -436,7 +444,10 @@ mod xtm_market {
                 .listings
                 .get(&order.listing_id)
                 .expect("Listing not found");
-            assert_eq!(signer, listing.seller, "Only the seller may dispute this review");
+            assert_eq!(
+                signer, listing.seller,
+                "Only the seller may dispute this review"
+            );
             let review = self
                 .seller_reviews
                 .get_mut(&order_id)
@@ -515,10 +526,7 @@ mod xtm_market {
             review.moderation_note = moderation_note;
             emit_event(
                 "xtm_market.review_removed",
-                Metadata::from_iter([
-                    ("order_id", order_id.to_string()),
-                    ("seller", seller_key),
-                ]),
+                Metadata::from_iter([("order_id", order_id.to_string()), ("seller", seller_key)]),
             );
         }
 
