@@ -1,9 +1,13 @@
 {
   "network": "esmeralda",
+  "contract_version": "0.1.0",
+  "status": "superseded_direct_payment",
   "platform_fee_percent": 3,
   "platform_payment_component": "component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c",
   "template_address": "template_0f72672b92965e4862d781de1ce141adf92958aa92ba37eb9df755412d97c49b",
   "market_component_address": "component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15",
   "previous_market_component": "component_256649b5849438698f37c43d642a567a6b284ecb7f337d23a3ec54ee91d32daf",
-  "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162"
+  "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162",
+  "escrow_template_address": null,
+  "escrow_market_component_address": null
 }
