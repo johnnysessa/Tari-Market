@@ -37,11 +37,11 @@ The wallet connection prefers Tari's standard `window.tari` provider, which work
 
 Only the buyer signer can confirm receipt or open a dispute. Only the listing's seller signer can mark the order shipped or claim after the timeout. The component owner records carrier-confirmed delivery and resolves disputes. A dispute blocks buyer confirmation and automatic seller claims until the owner resolves it. A buyer refund returns the full escrowed amount and charges no platform fee.
 
-The prior Esmeralda component (`component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15`) pays sellers immediately and is intentionally disabled in the web app. The v0.2 escrow template must be built, published, instantiated, and configured in `dist/index.html` before purchases reopen.
+The active Esmeralda escrow deployment uses template `template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac` and component `component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9`. The prior component (`component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15`) pays sellers immediately and is no longer used by the web app.
 
 ## Next Ootle milestone
 
-Build and publish v0.2, instantiate the new escrow component, configure its address in the web app, and verify a low-value escrow purchase between separate Esmeralda accounts. Test buyer release, dispute/refund, seller timeout, and unauthorized-caller rejection before using meaningful funds.
+Verify a low-value escrow purchase between separate Esmeralda accounts. Test buyer release, dispute/refund, seller timeout, and unauthorized-caller rejection before using meaningful funds.
 
 The verified v0.2 escrow release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). Publish it through the Tari Wallet Web UI, which performs the required WASM optimization before submitting it to Esmeralda.
 
