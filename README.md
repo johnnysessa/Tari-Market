@@ -2,6 +2,8 @@
 
 An Ootle marketplace prototype where every listing is priced and settled in XTM, with a live USD reference.
 
+Live app: [https://xtm-market.johnnytsunami14.chatgpt.site](https://xtm-market.johnnytsunami14.chatgpt.site)
+
 ## What works now
 
 - Fixed XTM pricing on every listing with a live USD reference
