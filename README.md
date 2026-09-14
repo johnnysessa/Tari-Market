@@ -26,6 +26,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Public wallet-linked seller profiles showing the aggregate score and individual verified-sale feedback before checkout
 - Seller review disputes with a written reason, submitted only by the wallet that completed the sale
 - Owner-only review moderation to retain or remove disputed feedback, plus direct removal of illegal, abusive, fraudulent, or policy-violating content
+- Moderation navigation is visible only when the connected account matches the marketplace owner's AllGasNoBrakes Ootle account; contract owner-signature rules remain the authoritative security check
 - Removed reviews are excluded from both the public profile and the seller's aggregate trust score
 - Refunded orders cannot produce ratings, and duplicate ratings are rejected by the contract
 - Seller trust shown on community listings, at checkout, and in the connected seller's Orders received view
