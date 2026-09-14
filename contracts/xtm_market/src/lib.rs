@@ -191,7 +191,9 @@ mod xtm_market {
             );
             let total = listing.xtm_price + listing.shipping_xtm;
             assert_eq!(payment.amount(), total, "Payment amount is incorrect");
-            let platform_fee = total * 3 / 100;
+            // Shipping is passed through to the seller in full. The marketplace
+            // service fee applies only to the listed item price.
+            let platform_fee = listing.xtm_price * 3 / 100;
             let seller_proceeds = total - platform_fee;
 
             let order_id = self.next_order_id;

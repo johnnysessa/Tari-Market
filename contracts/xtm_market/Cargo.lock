@@ -315,7 +315,7 @@ dependencies = [
 
 [[package]]
 name = "xtm_market"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "tari_template_abi",
  "tari_template_lib",

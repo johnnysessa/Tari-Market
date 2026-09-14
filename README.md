@@ -20,7 +20,7 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Seller shipping confirmation and an automatic-release claim 1,008 epochs (approximately 14 days) after delivery is recorded
 - Marketplace-owner delivery recording and dispute resolution, including full buyer refunds
 - Permanent escrow lifecycle events for funding, shipping, delivery, disputes, releases, and refunds
-- Three-percent seller service fee deducted only when escrow releases to the seller; refunded orders incur no marketplace fee
+- Three-percent seller service fee calculated only from the item price and deducted when escrow releases; shipping passes through to the seller in full and refunded orders incur no marketplace fee
 - Wallet-bound seller trust profiles stored on-chain by Ootle account component address
 - One verified one-to-five-star seller rating per successfully released order, submitted only by that order's buyer
 - Required nonblank public buyer comments of up to 500 characters attached to every verified rating
@@ -54,13 +54,17 @@ The active Esmeralda escrow deployment uses template `template_19555399f19e664fe
 
 ## v0.5 required receipt review upgrade
 
-The source contract is now version 0.5.0. The current v0.2 component cannot be upgraded in place: publish `contracts/artifacts/XTM_Market_Escrow_ReceiptReviewRequired_v0.5.0_Esmeralda.wasm` (SHA-256: `36adc48b70ae05c826c1281f2bc22ec0f4a5dcd65696cfcd5e497d917fabc415`) as a new template, instantiate it with `contracts/deployment/XTM_Market_Escrow_ReceiptReviewRequired_v0.5.0_Esmeralda_instantiate.tm`, then replace `MARKET_COMPONENT_ADDRESS` in `dist/index.html`. The frontend already provides the combined receipt, required rating, required comment, dispute, profile, and owner-moderation flows. Until the new address is configured, on-chain v0.5 actions remain gated and the active v0.2 escrow component continues handling purchases.
+Version 0.5.0 introduced the combined receipt, required rating, required comment, dispute, profile, and owner-moderation flows. Its preserved artifact is `contracts/artifacts/XTM_Market_Escrow_ReceiptReviewRequired_v0.5.0_Esmeralda.wasm` (SHA-256: `36adc48b70ae05c826c1281f2bc22ec0f4a5dcd65696cfcd5e497d917fabc415`).
+
+## v0.6 item-price-only marketplace fee upgrade
+
+The source contract is now version 0.6.0. The marketplace fee is `3% × item price`; shipping is excluded from the fee and paid to the seller in full. Publish `contracts/artifacts/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda.wasm` (SHA-256: `caf0796f68fa2fa5a9a12a2be6b539187015638a2157a187e3c4589f463b51f7`) as a new template, instantiate it with `contracts/deployment/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda_instantiate.tm`, then replace `MARKET_COMPONENT_ADDRESS` in `dist/index.html`. Until that component address is configured, the active v0.2 escrow component retains its existing fee behavior.
 
 ## Next Ootle milestone
 
 Verify a low-value escrow purchase between separate Esmeralda accounts. Test buyer release, dispute/refund, seller timeout, and unauthorized-caller rejection before using meaningful funds.
 
-The verified active v0.2 escrow artifact remains `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). It is intentionally preserved separately from the uniquely named v0.3, v0.4, and v0.5 upgrade artifacts.
+The verified active v0.2 escrow artifact remains `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). It is intentionally preserved separately from the uniquely named v0.3 through v0.6 upgrade artifacts.
 
 ## License
 
