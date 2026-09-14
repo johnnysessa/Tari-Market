@@ -20,6 +20,10 @@ An Ootle marketplace prototype where every listing is priced and settled in XTM,
 - Marketplace-owner delivery recording and dispute resolution, including full buyer refunds
 - Permanent escrow lifecycle events for funding, shipping, delivery, disputes, releases, and refunds
 - Three-percent seller service fee deducted only when escrow releases to the seller; refunded orders incur no marketplace fee
+- Wallet-bound seller trust profiles stored on-chain by Ootle account component address
+- One verified one-to-five-star seller rating per successfully released order, submitted only by that order's buyer
+- Refunded orders cannot produce ratings, and duplicate ratings are rejected by the contract
+- Seller trust shown on community listings, at checkout, and in the connected seller's Orders received view
 - Platform fees deposited into the AllGasNoBrakes Ootle account (`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`) at release
 - `window.tari` integration for Tari Universe and compatible browser wallets, with account discovery, capability detection, transaction submission, result polling, and disconnect
 - WalletConnect pairing with Tari Asset Vault as a fallback when `window.tari` is unavailable
@@ -37,13 +41,19 @@ The wallet connection prefers Tari's standard `window.tari` provider, which work
 
 Only the buyer signer can confirm receipt or open a dispute. Only the listing's seller signer can mark the order shipped or claim after the timeout. The component owner records carrier-confirmed delivery and resolves disputes. A dispute blocks buyer confirmation and automatic seller claims until the owner resolves it. A buyer refund returns the full escrowed amount and charges no platform fee.
 
+Seller trust is keyed to the seller's Ootle account component address, so the score follows that wallet across browsers and devices. The contract accepts one rating per order only from the authenticated buyer, only after escrow has settled in the seller's favor, and never after a refund. The browser reads the aggregate score from the public component state; it cannot edit or manufacture the score locally.
+
 The active Esmeralda escrow deployment uses template `template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac` and component `component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9`. The prior component (`component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15`) pays sellers immediately and is no longer used by the web app.
+
+## v0.3 seller trust upgrade
+
+The source contract is now version 0.3.0. Its trust fields change component state, so the current v0.2 component cannot be upgraded in place: publish `contracts/artifacts/XTM_Market_Escrow_TrustRatings_v0.3.0_Esmeralda.wasm` (SHA-256: `2aafeadd5ba7d3775f9cfa00b8896f95bb6acede68feefaad03ff4bde90b8ff3`) as a new template, instantiate a new component, then replace `MARKET_COMPONENT_ADDRESS` in `dist/index.html`. Until that address is configured, the deployed site continues using the active v0.2 escrow component and labels the trust feature as ready to activate.
 
 ## Next Ootle milestone
 
 Verify a low-value escrow purchase between separate Esmeralda accounts. Test buyer release, dispute/refund, seller timeout, and unauthorized-caller rejection before using meaningful funds.
 
-The verified v0.2 escrow release artifact is `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). Publish it through the Tari Wallet Web UI, which performs the required WASM optimization before submitting it to Esmeralda.
+The verified active v0.2 escrow artifact remains `contracts/artifacts/xtm_market.wasm` (SHA-256: `7925fe468bf0057f891fe5232cbbbad5639341f9ca02fce789d3719d986c9ed6`). It is intentionally preserved separately from the uniquely named v0.3 trust artifact.
 
 ## License
 

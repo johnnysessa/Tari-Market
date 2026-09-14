@@ -14,6 +14,8 @@ mod xtm_market {
         escrow_vault: Vault,
         listings: BTreeMap<u64, Listing>,
         orders: BTreeMap<u64, Order>,
+        seller_trust: BTreeMap<String, SellerTrust>,
+        order_ratings: BTreeMap<u64, u64>,
         next_listing_id: u64,
         next_order_id: u64,
     }
@@ -51,14 +53,25 @@ mod xtm_market {
         pub refunded: bool,
     }
 
+    #[derive(Clone)]
+    pub struct SellerTrust {
+        pub total_stars: u64,
+        pub rating_count: u64,
+    }
+
     impl XtmMarket {
-        pub fn new(xtm_resource: ResourceAddress, platform_payment_address: ComponentAddress) -> Component<Self> {
+        pub fn new(
+            xtm_resource: ResourceAddress,
+            platform_payment_address: ComponentAddress,
+        ) -> Component<Self> {
             Component::new(Self {
                 xtm_resource: xtm_resource.clone(),
                 platform_payment_address,
                 escrow_vault: Vault::new_empty(xtm_resource),
                 listings: BTreeMap::new(),
                 orders: BTreeMap::new(),
+                seller_trust: BTreeMap::new(),
+                order_ratings: BTreeMap::new(),
                 next_listing_id: 1,
                 next_order_id: 1,
             })
@@ -70,8 +83,11 @@ mod xtm_market {
                     .method("confirm_receipt", rule!(allow_all))
                     .method("open_dispute", rule!(allow_all))
                     .method("claim_after_timeout", rule!(allow_all))
+                    .method("rate_seller", rule!(allow_all))
                     .method("get_listing", rule!(allow_all))
                     .method("get_order", rule!(allow_all))
+                    .method("get_seller_trust", rule!(allow_all))
+                    .method("get_order_rating", rule!(allow_all))
                     .method("get_platform_payment_address", rule!(allow_all)),
             )
             .with_owner_rule(OwnerRule::OwnedBySigner)
@@ -92,29 +108,38 @@ mod xtm_market {
             assert!(!title.is_empty(), "Title is required");
             assert!(usd_cents > 0, "USD reference must be positive");
             assert!(xtm_price.is_positive(), "XTM price must be positive");
-            assert!(!delivery_public_key.is_empty(), "Delivery encryption key is required");
+            assert!(
+                !delivery_public_key.is_empty(),
+                "Delivery encryption key is required"
+            );
             assert!(inventory > 0, "Inventory must be positive");
 
             let id = self.next_listing_id;
             self.next_listing_id += 1;
-            self.listings.insert(id, Listing {
+            self.listings.insert(
                 id,
-                title,
-                usd_cents,
-                xtm_price,
-                shipping_xtm,
-                seller_payment_address,
-                seller: CallerContext::transaction_signer_public_key(),
-                delivery_public_key,
-                inventory,
-                active: true,
-            });
+                Listing {
+                    id,
+                    title,
+                    usd_cents,
+                    xtm_price,
+                    shipping_xtm,
+                    seller_payment_address,
+                    seller: CallerContext::transaction_signer_public_key(),
+                    delivery_public_key,
+                    inventory,
+                    active: true,
+                },
+            );
             id
         }
 
         // The owner-authorized oracle updates the USD reference; the XTM price stays fixed.
         pub fn update_usd_reference(&mut self, listing_id: u64, usd_cents: u64) {
-            let listing = self.listings.get_mut(&listing_id).expect("Listing not found");
+            let listing = self
+                .listings
+                .get_mut(&listing_id)
+                .expect("Listing not found");
             assert!(usd_cents > 0, "Invalid USD reference");
             listing.usd_cents = usd_cents;
         }
@@ -126,11 +151,27 @@ mod xtm_market {
             buyer_refund_address: ComponentAddress,
             encrypted_delivery: String,
         ) -> u64 {
-            assert_eq!(payment.resource_address(), self.xtm_resource, "Payment must be XTM");
-            let listing = self.listings.get_mut(&listing_id).expect("Listing not found");
-            assert!(listing.active && listing.inventory > 0, "Listing unavailable");
-            assert!(!encrypted_delivery.is_empty(), "Encrypted delivery details are required");
-            assert!(encrypted_delivery.len() <= 8192, "Encrypted delivery details are too large");
+            assert_eq!(
+                payment.resource_address(),
+                self.xtm_resource,
+                "Payment must be XTM"
+            );
+            let listing = self
+                .listings
+                .get_mut(&listing_id)
+                .expect("Listing not found");
+            assert!(
+                listing.active && listing.inventory > 0,
+                "Listing unavailable"
+            );
+            assert!(
+                !encrypted_delivery.is_empty(),
+                "Encrypted delivery details are required"
+            );
+            assert!(
+                encrypted_delivery.len() <= 8192,
+                "Encrypted delivery details are too large"
+            );
             let total = listing.xtm_price + listing.shipping_xtm;
             assert_eq!(payment.amount(), total, "Payment amount is incorrect");
             let platform_fee = total * 3 / 100;
@@ -141,50 +182,71 @@ mod xtm_market {
             listing.inventory -= 1;
             let xtm_paid = payment.amount();
             let buyer = CallerContext::transaction_signer_public_key();
-            self.orders.insert(order_id, Order {
-                id: order_id,
-                listing_id,
-                buyer,
-                buyer_refund_address,
-                usd_cents: listing.usd_cents,
-                xtm_paid,
-                seller_payment_address: listing.seller_payment_address.clone(),
-                platform_fee,
-                seller_proceeds,
-                encrypted_delivery,
-                shipped: false,
-                delivery_recorded_epoch: None,
-                disputed: false,
-                settled: false,
-                refunded: false,
-            });
+            self.orders.insert(
+                order_id,
+                Order {
+                    id: order_id,
+                    listing_id,
+                    buyer,
+                    buyer_refund_address,
+                    usd_cents: listing.usd_cents,
+                    xtm_paid,
+                    seller_payment_address: listing.seller_payment_address.clone(),
+                    platform_fee,
+                    seller_proceeds,
+                    encrypted_delivery,
+                    shipped: false,
+                    delivery_recorded_epoch: None,
+                    disputed: false,
+                    settled: false,
+                    refunded: false,
+                },
+            );
             self.escrow_vault.deposit(payment);
-            emit_event("xtm_market.sale", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("listing_id", listing_id.to_string()),
-                ("seller", listing.seller_payment_address.to_string()),
-                ("xtm_paid", total.to_string()),
-                ("status", "in_escrow".to_string()),
-            ]));
-            emit_event("xtm_market.escrow_funded", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("xtm_locked", total.to_string()),
-            ]));
+            emit_event(
+                "xtm_market.sale",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("listing_id", listing_id.to_string()),
+                    ("seller", listing.seller_payment_address.to_string()),
+                    ("xtm_paid", total.to_string()),
+                    ("status", "in_escrow".to_string()),
+                ]),
+            );
+            emit_event(
+                "xtm_market.escrow_funded",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("xtm_locked", total.to_string()),
+                ]),
+            );
             order_id
         }
 
         pub fn mark_shipped(&mut self, order_id: u64) {
             let signer = CallerContext::transaction_signer_public_key();
             let order = self.orders.get_mut(&order_id).expect("Order not found");
-            let listing = self.listings.get(&order.listing_id).expect("Listing not found");
-            assert_eq!(signer, listing.seller, "Only the seller may mark this order shipped");
+            let listing = self
+                .listings
+                .get(&order.listing_id)
+                .expect("Listing not found");
+            assert_eq!(
+                signer, listing.seller,
+                "Only the seller may mark this order shipped"
+            );
             assert!(!order.settled, "Order is already settled");
-            assert!(!order.disputed, "Disputed orders cannot be updated by the seller");
+            assert!(
+                !order.disputed,
+                "Disputed orders cannot be updated by the seller"
+            );
             order.shipped = true;
-            emit_event("xtm_market.order_shipped", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("status", "shipped".to_string()),
-            ]));
+            emit_event(
+                "xtm_market.order_shipped",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("status", "shipped".to_string()),
+                ]),
+            );
         }
 
         // Owner-only by the component's default access rule. A carrier integration or
@@ -194,14 +256,23 @@ mod xtm_market {
             assert!(order.shipped, "Order must be marked shipped first");
             assert!(!order.settled, "Order is already settled");
             assert!(!order.disputed, "Disputed orders cannot start auto-release");
-            assert!(order.delivery_recorded_epoch.is_none(), "Delivery is already recorded");
+            assert!(
+                order.delivery_recorded_epoch.is_none(),
+                "Delivery is already recorded"
+            );
             let epoch = Consensus::current_epoch();
             order.delivery_recorded_epoch = Some(epoch);
-            emit_event("xtm_market.delivery_recorded", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("delivery_epoch", epoch.to_string()),
-                ("auto_release_epoch", (epoch + AUTO_RELEASE_EPOCHS).to_string()),
-            ]));
+            emit_event(
+                "xtm_market.delivery_recorded",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("delivery_epoch", epoch.to_string()),
+                    (
+                        "auto_release_epoch",
+                        (epoch + AUTO_RELEASE_EPOCHS).to_string(),
+                    ),
+                ]),
+            );
         }
 
         pub fn confirm_receipt(&mut self, order_id: u64) {
@@ -209,7 +280,10 @@ mod xtm_market {
             {
                 let order = self.orders.get(&order_id).expect("Order not found");
                 assert_eq!(signer, order.buyer, "Only the buyer may confirm receipt");
-                assert!(!order.disputed, "A disputed order must be resolved by the marketplace");
+                assert!(
+                    !order.disputed,
+                    "A disputed order must be resolved by the marketplace"
+                );
                 assert!(!order.settled, "Order is already settled");
             }
             self.release_to_seller(order_id, "buyer_confirmed");
@@ -221,27 +295,90 @@ mod xtm_market {
             assert_eq!(signer, order.buyer, "Only the buyer may dispute this order");
             assert!(!order.settled, "Order is already settled");
             order.disputed = true;
-            emit_event("xtm_market.dispute_opened", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("status", "disputed".to_string()),
-            ]));
+            emit_event(
+                "xtm_market.dispute_opened",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("status", "disputed".to_string()),
+                ]),
+            );
         }
 
         pub fn claim_after_timeout(&mut self, order_id: u64) {
             let signer = CallerContext::transaction_signer_public_key();
             {
                 let order = self.orders.get(&order_id).expect("Order not found");
-                let listing = self.listings.get(&order.listing_id).expect("Listing not found");
-                assert_eq!(signer, listing.seller, "Only the seller may claim this order");
-                assert!(!order.disputed, "A disputed order must be resolved by the marketplace");
+                let listing = self
+                    .listings
+                    .get(&order.listing_id)
+                    .expect("Listing not found");
+                assert_eq!(
+                    signer, listing.seller,
+                    "Only the seller may claim this order"
+                );
+                assert!(
+                    !order.disputed,
+                    "A disputed order must be resolved by the marketplace"
+                );
                 assert!(!order.settled, "Order is already settled");
-                let delivered = order.delivery_recorded_epoch.expect("Delivery has not been recorded");
+                let delivered = order
+                    .delivery_recorded_epoch
+                    .expect("Delivery has not been recorded");
                 assert!(
                     Consensus::current_epoch() >= delivered + AUTO_RELEASE_EPOCHS,
                     "The 14-day release period has not ended"
                 );
             }
             self.release_to_seller(order_id, "timeout_elapsed");
+        }
+
+        // A buyer may rate the seller once, from one to five stars, only after a
+        // successful escrow release. Refunded orders cannot create a rating.
+        pub fn rate_seller(&mut self, order_id: u64, stars: u64) {
+            assert!(
+                (1..=5).contains(&stars),
+                "Rating must be between one and five stars"
+            );
+            assert!(
+                !self.order_ratings.contains_key(&order_id),
+                "This order has already been rated"
+            );
+
+            let signer = CallerContext::transaction_signer_public_key();
+            let seller_key = {
+                let order = self.orders.get(&order_id).expect("Order not found");
+                assert_eq!(signer, order.buyer, "Only the buyer may rate this seller");
+                assert!(
+                    order.settled,
+                    "The transaction must be completed before rating"
+                );
+                assert!(!order.refunded, "Refunded orders cannot be rated");
+                order.seller_payment_address.to_string()
+            };
+
+            let trust = self
+                .seller_trust
+                .entry(seller_key.clone())
+                .or_insert(SellerTrust {
+                    total_stars: 0,
+                    rating_count: 0,
+                });
+            trust.total_stars += stars;
+            trust.rating_count += 1;
+            let rating_count = trust.rating_count;
+            let total_stars = trust.total_stars;
+            self.order_ratings.insert(order_id, stars);
+
+            emit_event(
+                "xtm_market.seller_rated",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("seller", seller_key),
+                    ("stars", stars.to_string()),
+                    ("rating_count", rating_count.to_string()),
+                    ("total_stars", total_stars.to_string()),
+                ]),
+            );
         }
 
         // Owner-only. refund_buyer=true refunds the full escrow balance for
@@ -261,10 +398,13 @@ mod xtm_market {
                 };
                 let refund = self.escrow_vault.withdraw(total);
                 ComponentManager::get(buyer_refund_address).invoke("deposit", args![refund]);
-                emit_event("xtm_market.escrow_refunded", Metadata::from_iter([
-                    ("order_id", order_id.to_string()),
-                    ("xtm_refunded", total.to_string()),
-                ]));
+                emit_event(
+                    "xtm_market.escrow_refunded",
+                    Metadata::from_iter([
+                        ("order_id", order_id.to_string()),
+                        ("xtm_refunded", total.to_string()),
+                    ]),
+                );
             } else {
                 self.release_to_seller(order_id, "dispute_resolved_for_seller");
             }
@@ -285,11 +425,14 @@ mod xtm_market {
             ComponentManager::get(self.platform_payment_address.clone())
                 .invoke("deposit", args![payment.take(platform_fee)]);
             ComponentManager::get(seller_payment_address).invoke("deposit", args![payment]);
-            emit_event("xtm_market.escrow_released", Metadata::from_iter([
-                ("order_id", order_id.to_string()),
-                ("xtm_released", total.to_string()),
-                ("reason", reason.to_string()),
-            ]));
+            emit_event(
+                "xtm_market.escrow_released",
+                Metadata::from_iter([
+                    ("order_id", order_id.to_string()),
+                    ("xtm_released", total.to_string()),
+                    ("reason", reason.to_string()),
+                ]),
+            );
         }
 
         pub fn get_platform_payment_address(&self) -> ComponentAddress {
@@ -302,6 +445,19 @@ mod xtm_market {
 
         pub fn get_order(&self, order_id: u64) -> Option<Order> {
             self.orders.get(&order_id).cloned()
+        }
+
+        pub fn get_seller_trust(
+            &self,
+            seller_payment_address: ComponentAddress,
+        ) -> Option<SellerTrust> {
+            self.seller_trust
+                .get(&seller_payment_address.to_string())
+                .cloned()
+        }
+
+        pub fn get_order_rating(&self, order_id: u64) -> Option<u64> {
+            self.order_ratings.get(&order_id).copied()
         }
     }
 }
