@@ -18,6 +18,36 @@ Template: `template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecf
 
 Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f`.
 
+## Wallet connection options
+
+**WalletConnect is the default on the public website.** Click **Connect Tari wallet → WalletConnect → Connect wallet** to generate a private pairing link for a compatible Tari Esmeralda wallet. Do not share that link.
+
+| Where you open XTM Market | Default connection | Other options |
+|---|---|---|
+| Public site in a normal browser | WalletConnect | Local Asset Vault launcher; browser provider if available |
+| Inside Tari Universe with its provider available | Tari Universe / browser wallet | WalletConnect and local launcher instructions |
+| Local launcher at `http://localhost:5180` | Asset Vault local connection | WalletConnect; browser provider if available |
+
+Asset Vault **v0.40.0 does not expose its WalletConnect button**. Restoring WalletConnect on XTM Market does not enable it inside that wallet. Use the optional local launcher with this Asset Vault version.
+
+**No template or component update is required for these wallet connection changes.** The existing v0.11.0 Esmeralda template and component remain active. Website versions 79–80 added the local launcher and restored WalletConnect as the public default.
+
+## Connect Asset Vault v0.40.0 on your Mac
+
+Asset Vault's v0.40.0 build hides its WalletConnect button; the previous pairing instructions were incorrect for that release. Use the **local Esmeralda launcher** instead. The public site offers the download under **Connect Tari wallet → Asset Vault / local test launcher**. Tari Universe and an explicit WalletConnect option for compatible wallets remain available.
+
+1. Keep walletd running on Esmeralda and sign in at `http://localhost:5100`.
+2. In **API Keys** (key icon), create a short-lived `XTM Market Local` key with only `accounts:read`, `transactions:read`, `transaction_requests:create`, and `transaction_requests:read`. Do not grant Admin, direct `transactions:create`, or `transaction_requests:approve`.
+3. Download and unzip [the local launcher](https://xtm-market.johnnytsunami14.chatgpt.site/downloads/xtm-market-local.zip). In a second Terminal run `cd "$HOME/Downloads/XTM-Market-Local"`, then `python3 start.py`. Python 3.9+ is required, with no additional packages.
+4. Paste the key only into the hidden Terminal prompt. It stays in the launcher's memory, never in browser storage, a file, or the public site.
+5. Open `http://localhost:5180`, connect, and create a test listing. Review its request at `http://localhost:5100/transaction-requests`. The daemon requires separate approval before it can be submitted.
+
+The launcher binds only to loopback, rejects foreign hosts/origins, exposes a narrow operation list, checks Esmeralda and the fee cap, resolves inputs before creating the frozen approval request, and blocks duplicate pending requests. It cannot approve requests or directly submit arbitrary transactions. Stop it with Control+C and revoke the test key when done. See [full setup and troubleshooting](scripts/LOCAL-WALLET-START.txt).
+
+**Validation:** seven simulated-wallet integration tests cover approval, rejection, response-loss recovery, input integrity, fee/network checks, request ownership, duplicate blocking, and the HTTP boundary. The existing 66 JavaScript regression checks also pass. This is not yet an end-to-end result with a live Mac wallet. The next check is the user's first listing followed by a test purchase.
+
+The localhost origin has separate listings, orders, photos and delivery-decryption keys from the public site. These are not copied automatically. Cross-device catalog synchronization remains unimplemented. The template and component have not changed for this connection update.
+
 ## Latest website updates
 
 The website includes the following recent changes:
@@ -26,7 +56,8 @@ The website includes the following recent changes:
 - The buy page shows **Seller claim window — 14 days after recorded purchase**. Checkout terms, the escrow guide, dispute timing guidance, and automatic-review explanations use the same purchase-based rule.
 - The top-left **XTM Market** button opens the Market page.
 - The bottom of the Market page offers **8, 16, 24, 32, 64, or 128 items per page**, remembers the selection in this browser, and returns to page one when changed.
-- The README and pending deployment metadata identify the compiled **v0.11.0** contract as the next Ootle publication target.
+- The **v0.11.0** template is published and its component is instantiated on Esmeralda. The wallet updates do not change either address.
+- WalletConnect is the default on the public website; the optional local launcher uses Asset Vault’s separate request approvals.
 
 The new timeout is measured as **1,008 consensus epochs**, approximately 14 days, rather than an exact wall-clock deadline. An undisputed order can become eligible before shipping or delivery is recorded. The seller must submit a claim; payment does not release automatically when the deadline passes. This rule applies to the new testnet component, while existing orders retain their original contract rules.
 
@@ -162,7 +193,7 @@ Admins can appoint or revoke other admins. The original owner is not a removable
 
 ## Wallet integration and security changes
 
-- Both Tari Universe/browser wallets and WalletConnect pairing with Tari Asset Vault are supported. The connection dialog offers both methods. In a standalone browser, the unavailable Universe bridge is skipped and WalletConnect is selected; inside Universe, the embedded provider is selected, with WalletConnect also available. Unavailable providers are skipped during session restoration. Network detection failures do not default to Esmeralda.
+- Tari Universe/browser provider support and explicit WalletConnect selection remain. The public site defaults to WalletConnect again, with the local Asset Vault launcher optional. Inside the local launcher, local connection is selected; inside Universe, the browser provider is selected. Asset Vault v0.40.0 does not expose WalletConnect pairing. Local sessions require an explicit Connect action.
 - A locally bundled Tari Universe bridge restricted to the known `https://universe.tari.mw` parent origin and frame source, with request timeouts.
 - WalletConnect 2.23.7 and its seven-module static import graph vendored locally, with provenance hashes in `security/vendor-manifest.json`.
 - Esmeralda network-byte check, fresh wallet-account verification, account/session/provider checks, transaction and purchase locks, and tracking of unconfirmed transaction IDs before retry.
@@ -172,19 +203,20 @@ Admins can appoint or revoke other admins. The original owner is not a removable
 - Additional security-header configuration in `dist/_headers`; actual header delivery by hosting still needs verification.
 - Checked contract arithmetic and counters, release overflow checks, and input/admin bounds.
 
-No wallet private key, seed phrase, or wallet API key is requested by the application. Wallet signing remains external. These measures do not make the application attack-proof or replace an independent audit.
+The website never requests a private key, seed phrase or wallet API key. The optional local launcher requests a limited API key in Terminal and keeps it in memory; signing and separate approval remain in Asset Vault. These measures do not make the application attack-proof or replace an independent audit.
 
 ## Validation and known limits
 
-The v0.11.0 update passed 14 Rust unit tests, 58 JavaScript/security regression checks, and a release WASM build. The earlier security review also recorded the dependency and secret-pattern checks below; those scans were not rerun for this documentation update:
+The latest connection changes passed 66 JavaScript/security regression checks and seven local-wallet integration tests using a simulated daemon. The contract previously passed 14 Rust unit tests and a v0.11.0 release WASM build. The earlier security review also recorded the dependency and secret-pattern checks below; those scans were not rerun for this documentation update:
 
 - 14 passing Rust unit tests for settlement-party selection, repeated-settlement rejection, full shipping amounts, overflow/zero-price checks, admin signing-key grants/revocation, purchase deadline/overflow checks, username normalization, duplicate rejection, immutable ownership, and invalid/reserved names.
-- 58 passing JavaScript/security regression checks, plus a successful import of the vendored WalletConnect graph.
+- 66 passing JavaScript/security regression checks. The vendored WalletConnect graph import was also verified previously.
+- Seven passing simulated-wallet integration tests, including separate approval, rejection, duplicate prevention, recovery after a lost submission response, and localhost request boundaries.
 - A successful v0.11.0 WASM release build with overflow checks enabled.
 - An OSV query covering 34 locked Rust packages and the direct WalletConnect package with no listed advisories returned at the time of the scan. This did not reconstruct the full transitive npm advisory inventory.
 - A limited secret-pattern scan with no matching private-key blocks or token patterns in the checked first-party text files.
 
-See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for findings, remediations, evidence, and limitations. Live contract identity/balances, engine rollback and reentrancy behavior, native upgrade denial, real-wallet flows, production headers, and adversarial integration tests remain unverified. Browser data/key recovery, marketplace availability, and dispute fairness also remain explicit limitations.
+See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for findings, remediations, evidence, and limitations. The observed deployment identity was checked as described above. Complete live-wallet flows, engine rollback and reentrancy behavior, adversarial native-upgrade tests, production headers, and broader adversarial integration tests remain unverified. Browser data/key recovery, marketplace availability, and dispute fairness also remain explicit limitations.
 
 ## Source layout
 
@@ -192,6 +224,12 @@ See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for findings, remediations, evidenc
 |---|---|
 | `dist/index.html` | Website structure, styling, CSP, and script integrity references |
 | `dist/assets/app.js` | Marketplace, wallet, checkout, role, dispute, and order logic |
+| `dist/assets/local-wallet.js` | Browser transport for the optional local launcher |
+| `dist/downloads/xtm-market-local.zip` | Downloadable local marketplace and launcher bundle |
+| `scripts/local-wallet.py` | Loopback-only connector using separately approved wallet requests |
+| `scripts/LOCAL-WALLET-START.txt` | Mac setup instructions and troubleshooting |
+| `scripts/package-local-wallet.py` | Rebuild the launcher download from current site files |
+| `tests/local-wallet.py` | Simulated-wallet and HTTP-boundary integration tests |
 | `dist/assets/tari-connector.js` | Locally pinned and hardened Universe bridge |
 | `dist/assets/vendor/` | Vendored WalletConnect modules and shims |
 | `dist/assets/` | Product photography and client assets |
@@ -215,6 +253,8 @@ python -m http.server 8080 --directory dist
 ```
 
 Open `http://localhost:8080` to inspect the website. Wallet-host behavior and live transactions require their separate integration environment.
+
+After modifying any first-party JavaScript asset, refresh integrity hashes. After changing the local launcher or any bundled site asset, rebuild the download with `python3 scripts/package-local-wallet.py`. Test the local connector with `python3 tests/local-wallet.py`.
 
 After modifying `app.js` or the wallet bridge:
 
@@ -240,10 +280,10 @@ Artifact: `contracts/artifacts/XTM_Market_SellerUsernames_v0.11.0_Esmeralda.wasm
 
 SHA-256: `689b7224e5f571bb3b6a71fa83f31558e1c6d8637ed17a915974c2c09299d65d`
 
-1. Publish the reviewed v0.11.0 artifact and instantiate a new component from the intended owner wallet using the XTM resource and intended platform account.
+1. **Completed:** publish the v0.11.0 template and instantiate the Esmeralda component recorded above. Do not republish it for website-only wallet changes.
 2. Verify the returned template/component, native `OwnerRule::None`, original owner signer, token resource rules, and platform address.
 3. Test a small Esmeralda purchase between separate buyer and seller accounts, then buyer release, refund, disputed seller release, purchase-epoch recording, rejection before the 1,008-epoch deadline, eligibility at the deadline without recorded delivery, delivery updates that do not reset the deadline, dispute-blocked timeout claims, separate fee payment, duplicate settlement, revoked-admin rejection, recipient restrictions, and native upgrade denial.
-4. Update the verified component configuration in `dist/assets/app.js` and deployment records. Verify duplicate username rejection across different wallets, same-wallet reuse, concurrent reservations, and rollback of a failed listing. Enable `ITEM_PRICE_FEE_READY`, `SECURITY_UPGRADE_READY`, and `SELLER_USERNAMES_READY` only after the matching tests and configuration checks succeed. Refresh script integrity hashes and publish the website update.
+4. The current component configuration and testnet readiness flags are already set in `dist/assets/app.js`. Complete live checks of duplicate username rejection across different wallets, same-wallet reuse, concurrent reservations, and rollback of a failed listing. These enabled testnet flags do not certify production readiness.
 5. Preserve the old component addresses for their existing orders. Do not change an order's component ID or silently move outstanding escrow.
 
 The current component and template are listed in Current status above and in `contracts/deployment/esmeralda.json`. Historical pending-upgrade entries remain as provenance; their older artifacts are not the active testnet target.
@@ -268,6 +308,8 @@ The current component and template are listed in Current status above and in `co
 | v0.10 | Seller timeout starts at recorded purchase; delivery no longer gates or resets the 1,008-epoch window. Existing deployed orders retain their original rules. |
 | v0.11 | Wallet-linked unique seller usernames, atomic first-listing registration, verified profile display, and duplicate/ownership tests |
 | Latest notice change | Removed the disputes guide's **Current availability** block without enabling transactions |
+| Website v79 | Optional local Esmeralda launcher, limited API-key permissions, native Asset Vault approvals, setup download and integration checks |
+| Website v80 | WalletConnect restored as the public default; Universe and local connections retained |
 | Documentation refresh | Replaced outdated README claims with the current website behavior, source structure, security changes, and activation status |
 
 Compiled historical artifacts are preserved for provenance. Their presence is not evidence that a particular version is deployed or covered by the latest security fixes.

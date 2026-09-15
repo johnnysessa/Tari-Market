@@ -34,7 +34,8 @@ Usernames are reserved atomically with the first listing and are tied to the tra
 
 ### Website and wallet handling
 
-- Both the embedded Tari Universe wallet and WalletConnect/Tari Asset Vault are supported. An unavailable Universe bridge is skipped in standalone browsers.
+- The embedded Tari Universe path and explicit WalletConnect option remain. Asset Vault v0.40.0 hides WalletConnect; the local test launcher uses its native, separately approved transaction requests instead.
+- The optional launcher binds to loopback and checks host/origin/session boundaries, passkey authentication, Esmeralda, and the fee cap. Its limited API key stays in process memory. It exposes neither approval nor direct-signing endpoints; Asset Vault enforces approval of the frozen transaction.
 - The Universe bridge checks its parent origin and message source. Scripts and wallet dependencies are stored with the site, with integrity/provenance hashes and a restrictive script policy.
 - Transaction handling checks the wallet, network, account, and accepted execution result; submissions are serialized and unconfirmed transaction IDs are tracked.
 - Before submission, the app rechecks the current component configuration. Checkout compares listing details with fresh contract state, and old listing IDs cannot be reused against the new component.
@@ -45,6 +46,7 @@ Usernames are reserved atomically with the first listing and are tied to the tra
 
 - **14 Rust unit tests** passed for settlement helpers, amounts, admin signing keys, purchase deadlines, and username rules.
 - The **v0.11.0 WASM release build** succeeded with overflow checks. Versioned artifacts and checksums are retained in `contracts/artifacts/`.
+- **Seven simulated-wallet integration tests** passed for the local launcher, covering approval separation, rejection, response-loss recovery, request ownership, transaction integrity, duplicate blocking and the HTTP boundary. A live Mac-wallet trial is still required.
 - **66 JavaScript/security regression checks** passed after the dual-wallet connection fix. They include provider routing, bridge message boundaries, storage and rendering validation, transaction classification, username display, and script integrity.
 - Targeted local checks exercised pagination boundaries, dispute-order eligibility, receipt decoding, and rejection of an unexpected component configuration.
 - An earlier dependency advisory query covered 34 locked Rust packages and the direct WalletConnect package, with no listed advisories returned at that time. This was not a full transitive dependency audit or a fresh scan for every website change.

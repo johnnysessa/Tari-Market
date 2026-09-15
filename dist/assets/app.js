@@ -261,11 +261,23 @@
     function renderWalletConnectionChoice(){
       const select=$('#walletConnectionMethod'),available=hasAvailableTariProvider();
       select.querySelector('option[value="provider"]').disabled=!available;
-      if(!available&&select.value==='provider')select.value='walletconnect';
-      const embedded=select.value==='provider';
-      $('#walletConnectInstructions').hidden=embedded||walletConnection.connected;
-      $('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='window.tari'?'Tari browser wallet':'WalletConnect'}.`:embedded?'Approve access in your Tari Universe or browser wallet.':'Pair your Esmeralda Tari Asset Vault using WalletConnect.';
+      if(!available&&select.value==='provider')select.value=window.xtmLocalWallet?.available?'local':'walletconnect';
+      const embedded=select.value==='provider',local=select.value==='local';
+      $('#walletConnectInstructions').hidden=select.value!=='walletconnect'||walletConnection.connected;
+      $('#localWalletInstructions').hidden=select.value!=='local'||walletConnection.connected;
+      $('#localLauncherSetup').hidden=Boolean(window.xtmLocalWallet?.available);
+      $('#localLauncherReady').hidden=!window.xtmLocalWallet?.available;
+      $('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='local'?'local Asset Vault':walletConnection.transport==='window.tari'?'Tari browser wallet':'WalletConnect'}.`:embedded?'Approve access in your Tari Universe or browser wallet.':local?'Use Asset Vault on this Mac with the local test launcher.':'Use a wallet that supports Tari Esmeralda WalletConnect sessions.';
       select.disabled=walletConnection.connected||$('#connectWallet').disabled;
+    }
+    async function finishLocalWallet(){
+      if(!window.xtmLocalWallet?.available)throw new Error('Download and run the local launcher below, then open http://localhost:5180.');
+      const info=await window.xtmLocalWallet.request('tari_getWalletInfo');
+      if(info.network_byte!==38||String(info.network).toLowerCase()!=='esmeralda')throw new Error('Switch Asset Vault to Esmeralda.');
+      const response=await window.xtmLocalWallet.request('tari_getDefaultAccount'),account=response?.account||response;
+      if(!/^component_[0-9a-f]{64}$/i.test(account?.component_address||'')||!account.owner_key_id)throw new Error('Asset Vault did not return a default signing account.');
+      walletConnection={...walletConnection,connected:true,transport:'local',accountAddress:account.component_address,walletAddress:'',network:'esmeralda',networkByte:38,account,session:null,capabilities:null};
+      $('#pairingPanel').classList.remove('show');$('#walletDialog').close();await refreshTrustScores();renderWalletState();renderSellerOrders();toast('Asset Vault connected. Approve transactions on its Requests page.');
     }
     let walletLibrariesPromise;
     function loadWalletLibraries(){
@@ -284,6 +296,7 @@
       return client
     }
     async function walletRequest(method,params={}){
+      if(walletConnection.transport==='local')return window.xtmLocalWallet.request(method,params);
       if(walletConnection.transport==='window.tari'){
         if(!hasAvailableTariProvider())throw new Error('The Tari wallet provider is no longer available.');
         return window.tari.request({method,params})
@@ -320,6 +333,7 @@
       $('#pairingPanel').classList.add('show')
     }
     async function restoreWalletSession(){
+      if(window.xtmLocalWallet?.available)return; // Local credentials never restore or connect silently.
       if(hasAvailableTariProvider()){
         try{const accounts=await window.tari.request({method:'tari_getAccounts'});if(accounts?.length){await finishWindowTari(accounts);return}}catch(error){console.warn('window.tari session restore failed',error)}
       }
@@ -445,7 +459,8 @@
       const button=$('#connectWallet'),errorBox=$('#walletError');
       errorBox.classList.remove('show');button.disabled=true;button.textContent='Connecting…';$('#walletConnectionMethod').disabled=true;
       try{
-        if($('#walletConnectionMethod').value==='provider'){if(!hasAvailableTariProvider())throw new Error('Tari Universe is unavailable in this tab. Choose WalletConnect / Tari Asset Vault.');const accounts=await window.tari.request({method:'tari_requestAccounts'});await finishWindowTari(accounts);return}
+        if($('#walletConnectionMethod').value==='local'){await finishLocalWallet();return}
+        if($('#walletConnectionMethod').value==='provider'){if(!hasAvailableTariProvider())throw new Error('Tari Universe is unavailable in this tab. Choose WalletConnect or the local Asset Vault launcher.');const accounts=await window.tari.request({method:'tari_requestAccounts'});await finishWindowTari(accounts);return}
         const client=await getWalletClient(),existing=client.session.getAll().find(candidate=>candidate.namespaces?.tari);
         if(existing){await finishWalletSession(existing,client);return}
         const {uri,approval}=await client.connect({requiredNamespaces:{tari:{methods:['tari_getDefaultAccount','tari_submitTransaction','tari_getTransactionResult'],chains:[WALLETCONNECT_CHAIN],events:[]}},sessionProperties:{required_permissions:JSON.stringify([{Accounts:['Read',null]},{Transactions:'Create'},{Transactions:'Read'}]),optional_permissions:'[]'}});
@@ -461,7 +476,7 @@
     }
     async function disconnectWallet(){
       const {client,session,transport}=walletConnection;
-      try{if(transport==='window.tari'&&window.tari?.request)await window.tari.request({method:'tari_disconnect'});else if(client&&session)await client.disconnect({topic:session.topic,reason:{code:6000,message:'User disconnected'}})}catch{}
+      try{if(transport==='local')window.xtmLocalWallet.disconnect();else if(transport==='window.tari'&&window.tari?.request)await window.tari.request({method:'tari_disconnect'});else if(client&&session)await client.disconnect({topic:session.topic,reason:{code:6000,message:'User disconnected'}})}catch{}
       walletConnection={connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,client,capabilities:null};
       $('#pairingPanel').classList.remove('show');$('#pairingUri').value='';$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false;$('#walletDialog').close();renderWalletState();renderSellerOrders();toast('Wallet disconnected')
     }
@@ -816,7 +831,7 @@
     document.querySelectorAll('[data-page]').forEach(button=>button.onclick=()=>setPage(button.dataset.page));
     window.addEventListener('hashchange',()=>setPage(pageFromHash(),false));
     const dialog=$('#listingDialog');$('#listButton').onclick=()=>{const address=$('#listingForm').elements.paymentAddress;address.value=walletConnection.connected?walletConnection.accountAddress:'';address.readOnly=true;const known=[...usernameListings.values()].find(row=>row.address===String(walletConnection.accountAddress||'').toLowerCase());$('#sellerUsername').value=known?.name||'';updateUsernameStatus();dialog.showModal()};$('#closeDialog').onclick=$('#cancelDialog').onclick=()=>dialog.close();
-    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{$('#walletConnectionMethod').value=hasAvailableTariProvider()?'provider':'walletconnect';renderWalletConnectionChoice();if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
+    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{$('#walletConnectionMethod').value=walletConnection.connected?(walletConnection.transport==='window.tari'?'provider':walletConnection.transport==='local'?'local':'walletconnect'):hasAvailableTariProvider()?'provider':window.xtmLocalWallet?.available?'local':'walletconnect';renderWalletConnectionChoice();if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
     $('#closeProfile').onclick=()=>$('#profileDialog').close();
     $('#closeProduct').onclick=()=>$('#productDialog').close();
     function openReceiptReview(orderId){$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}

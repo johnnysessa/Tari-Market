@@ -1,1 +1,4 @@
 contracts/xtm_market/target/
+
+__pycache__/
+*.pyc

@@ -1,0 +1,72 @@
+XTM MARKET — LOCAL ESMERALDA TEST
+
+This launcher connects a local copy of XTM Market to Asset Vault v0.40.0.
+It does not replace your wallet or republish the template/component.
+Use test funds only. Live listing and purchase testing is still required.
+
+1. KEEP YOUR WALLET RUNNING
+Keep the existing wallet Terminal window open. Log in at:
+http://localhost:5100
+
+2. CREATE A LIMITED API KEY IN ASSET VAULT
+Click the key-shaped icon in the left sidebar (API Keys).
+Create a key named XTM Market Local. Choose a short expiry (e.g. one day).
+Select ONLY these four permissions:
+  accounts:read
+  transactions:read
+  transaction_requests:create
+  transaction_requests:read
+Do not select Admin, transactions:create or transaction_requests:approve.
+Copy the generated tw_ key. Do not paste it into a website or chat.
+
+3. START THE MARKETPLACE
+Unzip xtm-market-local.zip in Downloads. Open a NEW Terminal window.
+Run these two commands, one at a time:
+
+cd "$HOME/Downloads/XTM-Market-Local"
+python3 start.py
+
+When asked, paste the API key and press Return. Typing/pasting is hidden.
+The key stays in this process's memory, is not saved to disk, and is only
+sent to your wallet on 127.0.0.1:5100. No Python packages are needed.
+Python 3.9 or newer must already be installed (check: python3 --version).
+
+4. OPEN AND CONNECT
+Open http://localhost:5180 in your browser.
+Click Connect Tari wallet, choose Asset Vault / local test launcher,
+then Connect wallet.
+
+5. TEST A LISTING
+Choose List an item. Use a test product and your connected wallet address.
+Choose your seller username and submit. The marketplace shows a request ID.
+Open http://localhost:5100/transaction-requests (the check-circle icon).
+Review the exact transaction and fee. Approve only the request you intended.
+Return to XTM Market and keep its tab open; it submits after your approval.
+If the wallet UI already submitted it, XTM Market tracks that transaction.
+Rejecting the request prevents submission. Requests expire after 10 minutes;
+the transaction's epoch bound can also expire before approval.
+
+Keep both Terminal windows open while testing. To stop this launcher,
+press Control+C in its window. Revoke its API key in Asset Vault when done.
+
+TROUBLESHOOTING
+- No such directory: ensure the extracted folder is XTM-Market-Local in
+  Downloads, or type cd followed by a space and drag the folder into Terminal.
+- Python missing: install Python 3.9+ from https://www.python.org/downloads/macos/.
+- Wallet unavailable: keep walletd running on port 5100, on Esmeralda.
+- Unauthorized: check the key expiry and the four permissions above.
+- Address already in use: stop the previous launcher with Control+C.
+- Request rejected/expired: inspect it in Asset Vault before trying again.
+- Connection lost during submission: check Requests AND Transactions first.
+  Do not create another request until you know what happened to the first.
+- After a restart, an old request can be completed/rejected in Asset Vault;
+  a new launcher will not take over requests from a previous process.
+
+LOCAL BROWSER DATA
+The localhost marketplace has separate browser storage from the public site.
+Listings, photos, orders and delivery-decryption keys do not transfer
+automatically. Use this same local browser profile for your test listings.
+Switch wallet accounts and reconnect to test a separate buyer. The shared
+catalog across different devices is not yet implemented.
+
+Source: https://github.com/johnnysessa/XMT-Marketplace
