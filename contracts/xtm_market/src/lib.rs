@@ -71,6 +71,7 @@ mod xtm_market {
         pub dispute_reason: String,
         pub removed: bool,
         pub moderation_note: String,
+        pub automatic: bool,
     }
 
     impl XtmMarket {
@@ -362,10 +363,13 @@ mod xtm_market {
                 );
             }
             self.release_to_seller(order_id, "timeout_elapsed");
+            if !self.order_ratings.contains_key(&order_id) {
+                self.record_review(order_id, 5, "Sale Satisfactory".to_string(), true);
+            }
         }
 
         // A verified review combines the wallet-bound rating with a required
-        // public buyer comment. This also supports orders released by timeout.
+        // public buyer comment. Timeout claims instead record an automatic review.
         // One completed, non-refunded order gets one review.
         pub fn review_seller(&mut self, order_id: u64, stars: u64, comment: String) {
             assert!(
@@ -380,7 +384,7 @@ mod xtm_market {
             );
 
             let signer = CallerContext::transaction_signer_public_key();
-            let seller_key = {
+            {
                 let order = self.orders.get(&order_id).expect("Order not found");
                 assert_eq!(signer, order.buyer, "Only the buyer may rate this seller");
                 assert!(
@@ -388,9 +392,22 @@ mod xtm_market {
                     "The transaction must be completed before rating"
                 );
                 assert!(!order.refunded, "Refunded orders cannot be rated");
-                order.seller_payment_address.to_string()
-            };
+            }
+            self.record_review(order_id, stars, comment, false);
+        }
 
+        // Private: automatic feedback can only be created by the guarded timeout claim.
+        fn record_review(&mut self, order_id: u64, stars: u64, comment: String, automatic: bool) {
+            assert!(
+                !self.order_ratings.contains_key(&order_id),
+                "This order has already been rated"
+            );
+            let order = self.orders.get(&order_id).expect("Order not found");
+            assert!(
+                order.settled && !order.refunded,
+                "Only completed sales can be rated"
+            );
+            let seller_key = order.seller_payment_address.to_string();
             let trust = self
                 .seller_trust
                 .entry(seller_key.clone())
@@ -420,6 +437,7 @@ mod xtm_market {
                     dispute_reason: String::new(),
                     removed: false,
                     moderation_note: String::new(),
+                    automatic,
                 },
             );
 
@@ -431,6 +449,7 @@ mod xtm_market {
                     ("stars", stars.to_string()),
                     ("rating_count", rating_count.to_string()),
                     ("total_stars", total_stars.to_string()),
+                    ("automatic", automatic.to_string()),
                 ]),
             );
         }

@@ -62,7 +62,15 @@ Version 0.5.0 introduced the combined receipt, required rating, required comment
 
 ## v0.6 item-price-only marketplace fee upgrade
 
-The source contract is now version 0.6.0. The marketplace fee is `3% × item price`; shipping is excluded from the fee and paid to the seller in full. Publish `contracts/artifacts/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda.wasm` (SHA-256: `caf0796f68fa2fa5a9a12a2be6b539187015638a2157a187e3c4589f463b51f7`) as a new template, instantiate it with `contracts/deployment/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda_instantiate.tm`, then replace `MARKET_COMPONENT_ADDRESS` in `dist/index.html`. Until that component address is configured, the active v0.2 escrow component retains its existing fee behavior.
+Version 0.6.0 introduced item-price-only fees. The marketplace fee is `3% × item price`; shipping is excluded from the fee and paid to the seller in full. Publish `contracts/artifacts/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda.wasm` (SHA-256: `caf0796f68fa2fa5a9a12a2be6b539187015638a2157a187e3c4589f463b51f7`) as a new template, instantiate it with `contracts/deployment/XTM_Market_Escrow_ItemPriceFeeOnly_v0.6.0_Esmeralda_instantiate.tm`, then replace `MARKET_COMPONENT_ADDRESS` in `dist/index.html`. Until that component address is configured, the active v0.2 escrow component retains its existing fee behavior.
+
+## v0.7 automatic timeout reviews (pending activation)
+
+Source version 0.7.0 adds a five-star review with the exact comment `Sale Satisfactory` in the same transaction as a successful seller timeout claim, after the existing 1,008-epoch delivery window. The claim must be undisputed and unpaid; refunded sales and existing reviews cannot receive a default. Automatic reviews count toward seller trust and carry an explicit `automatic` flag displayed in the app. Buyer-confirmed sales keep their buyer-written feedback. No background scheduler is implied: the seller must submit the eligible timeout claim.
+
+Compiled artifact: `contracts/artifacts/XTM_Market_Escrow_AutomaticReviews_v0.7.0_Esmeralda.wasm` (SHA-256: `277cc1591cda432bec51cbd039a3e33971316830e3de33cd3bebffa252f7011e`). The matching instantiate manifest is in `contracts/deployment/`.
+
+The live component is still v0.2. This feature requires publishing and instantiating v0.7 and configuring its component address; updating the website alone does not activate contract behavior.
 
 ## Next Ootle milestone
 
