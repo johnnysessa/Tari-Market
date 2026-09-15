@@ -1,72 +1,71 @@
-# XTM Market security review — September 15, 2026
+# XTM Market — public security summary
 
-**Status: security hardening implemented; not an independent audit, not a guarantee, and not clearance for real-money use.** Website source and the new v0.9.0 contract were reviewed. The new contract compiled to WASM, but has NOT been published or instantiated on Ootle. Existing escrow is unaffected by source changes. New purchases remain disabled.
+Updated September 15, 2026. Contract source: **v0.11.0**. Website: **version 78**.
 
-## Escrow rule in v0.9.0
+## Current status
 
-All escrow withdrawals go through one private `settle_order` function. It takes an order ID, a refund boolean, and an audit reason. It does not accept an amount or recipient. The function chooses the buyer refund address or seller payment address saved at purchase, withdraws exactly the saved order amount, and marks the order settled before calling the recipient. There is no public withdrawal, sweep, recipient setter, emergency drain, or escrow migration method.
+XTM Market is open for **Esmeralda testnet trials using test funds and test listings**. This summary describes implemented protections, recorded checks, and remaining limitations. It is not an independent audit, production certification, or a guarantee against attacks.
 
-“Original buyer/seller” means the account addresses recorded in the signed purchase/listing. It is not verification of a person's real-world identity or proof that an arbitrary supplied component is a standard wallet account. A bad recipient may prevent its own settlement. Transaction atomicity, resource ownership and rollback remain responsibilities of the Ootle engine.
+The v0.11.0 template has been published and a new marketplace component instantiated. Accepted wallet transaction exports and a live indexer response confirmed the expected template, component configuration, application owner signing key, resource, platform address, and state layout. The indexer reported `verified: true`, and the component has native `OwnerRule::None`.
 
-The component uses native `OwnerRule::None`, rather than `OwnedBySigner`, so native owner-based template replacement is not available. Application ownership is retained in the constructor signing key and enforced inside guarded methods. This is intentionally an immutable escrow component: fixes require a new component for future purchases. The existing owner retains delivery recording and USD-reference updates. Admins can resolve disputes and manage admins, but cannot specify escrow recipients or amounts.
+- Template: `template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2`
+- Component: `component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c`
+- Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f`
 
-The 3% platform fee previously went to a third party directly from escrow. That conflicts with the requested two-party-only rule. In v0.9.0 the full escrow payment goes to the seller or buyer. A separate `pay_marketplace_fee` method accepts a fresh bucket explicitly authorized by the original seller after a completed sale, with exact resource/amount checks and a paid-once record. It never accesses the escrow vault. The website contains a separate fee-payment action. Fee collection is consequently not guaranteed; the seller can decline to pay, and this cannot prevent escrow settlement.
+The published binary was optimized by the wallet and has not been proven byte-identical to the local artifact. Component creation is confirmed; complete website-driven listing, purchase, refund, and settlement flows remain to be validated with real testnet wallets. Readiness flags permit these trials, not real-money deployment. Checks of deployed state describe the observation at the time, not continuous independent monitoring.
 
-## Findings and changes
+## Implemented protections
 
-| Severity | Finding | Remediation / status |
-|---|---|---|
-| Critical to requested invariant | Native component owner could potentially replace escrow logic using engine upgrade authority. Upstream engine tests demonstrate owner-authorized migration. | New component has no native owner; application permissions are checked in code. Native-engine enforcement still needs integration testing against the deployment network. Existing components remain unchanged. |
-| High | Platform fee was withdrawn from escrow to a third-party platform account. | Single two-party settlement route; fee uses a separate seller-supplied bucket. |
-| High | `safeImageSrc` checked a prefix, allowing trailing quote/event-handler payloads into image attributes. | Full-string allowlist for local raster assets and raster base64 data; regression payloads rejected. |
-| High | Universe bridge accepted any parent-frame origin, and sent requests to `*`. | Locally pinned bridge; exact parent origin and source checks; requests target `https://universe.tari.mw`; request timeouts added. Other embedding origins need a reviewed integration, not a wildcard. |
-| High | Runtime bridge script could change remotely without a site update. | Checked-in bridge snapshot with integrity hash. WalletConnect and its imported shims are also checked in with provenance hashes; no remote script origin is allowed by CSP. |
-| High | Truthy transaction results / status substrings could be mistaken for success. | Only exact `Accepted` status with an `Accept` execution decision is accepted. Rejection and fee-only acceptance do not count as purchase success. Unknown formats fail closed. Needs real-wallet compatibility testing. |
-| Medium | Concurrent requests or wallet changes could corrupt payment attribution or duplicate submission. | Transaction mutex, purchase mutex, captured purchase data, account/session/provider checks, fresh wallet-account verification, pinned Esmeralda network byte (38, matching the recorded Esmeralda transaction), remembered unconfirmed transaction IDs and status check before retry. Browser clearing or lost response before an ID is returned still requires wallet-history reconciliation. |
-| Medium | Local listing metadata and encryption key were trusted at checkout. | Compare listing ID, availability, title, seller address, XTM price, shipping and delivery key with fresh component state before encryption/payment. Indexer authenticity is still a trust dependency. |
-| Medium | Local order data could nominate arbitrary marketplace component addresses. | Explicit component allowlist for case fetching; delegated admins do not gain permissions over legacy components; single-component review actions and local status updates restricted to matching components, preventing order-ID collisions with legacy components. |
-| Medium | Exportable private delivery JWKs were saved in localStorage. | New keys are non-extractable CryptoKeys in IndexedDB. Legacy keys migrate when used, deleting the localStorage private JWK only after storage succeeds. Browser compromise can still invoke decryption; non-extractable is not hardware protection. Clearing site data can destroy keys. |
-| Medium | Corrupt storage and unvalidated IDs, stock, prices or review stars could break rendering or reach unsafe attributes. | Guarded JSON reads, bounded stored-row counts, numeric validation, output escaping, static card style and bounded review-star rendering. |
-| Medium | Release builds could wrap counters or arithmetic; some strings were unbounded. | Checked amount/counter/rating/epoch arithmetic, release overflow checks, title/key/admin bounds. Protocol fees and practical state-size limits still matter. |
-| Defense in depth | Inline app execution lacked a restrictive script policy. | App moved to a local file; CSP blocks inline scripts and event handlers, objects, base-URL changes and form navigation. Script integrity hashes added. `_headers` declares frame restrictions, nosniff, referrer and permissions policy. Actual header delivery by hosting was not verified. |
-| Defense in depth | Stale out-of-order role fetches could repaint outdated UI access. | No-cache timed fetches, response sequence checks and role expiration. Every contract action rechecks the signer; UI checks are not authorization. |
+### Escrow and fees
 
-## Verification performed
+The full item price and shipping payment enter escrow at purchase. Settlement obtains its amount and destination from the stored order, paying the original seller payment address or refunding the original buyer refund address. The application offers no arbitrary recipient selection, escrow sweep, or escrow migration method. Settlement state is updated before the recipient call.
 
-- `cargo test --offline`: six passing unit tests using production helpers for party selection, repeated-settlement rejection, full shipping amount, overflow rejection, zero-price rejection, and signer grants/revocation.
-- WASM release build for `wasm32-unknown-unknown`: succeeded with overflow checks.
-- `node tests/security.cjs`: 46 passing assertions covering injection payloads, storage validation, exact transaction-result classification, bridge source/origin checks, one escrow withdrawal site, separate fee flow, effects-before-external-call ordering, CSP and script integrity.
-- Secret-pattern scan of 11 first-party text files found no matching private-key blocks or token patterns; this is not exhaustive secret detection.
-- Source review of all public contract methods and their callers, constructor/access rules, fee paths, frontend wallet submission, storage, rendered data and encryption handling. Static checks complement, but do not replace, runtime tests.
-- OSV batch query for all 34 locked crates.io packages and direct `@walletconnect/sign-client` 2.23.7 returned no listed advisories. Raw inventory/results are in `security/`. This is advisory coverage at the time of the query, not proof that dependencies are safe. WalletConnect transitive dependencies and the native wallet/engine were not comprehensively scanned.
-- Built artifact checksum saved next to the v0.9.0 WASM. Historical WASM files are retained for provenance; they have not been retroactively hardened.
+The native owner rule is None. Application ownership and delegated admin permissions are enforced through signing-key checks. Admins decide payment and review disputes but cannot choose an unrelated escrow recipient. This does not guarantee fair dispute decisions.
 
-## What remains unverified or trusted
+The seller separately authorizes the 3% item-price fee from a fresh payment bucket after a completed sale. The fee does not access escrow and is not guaranteed if the seller declines to pay. Shipping is excluded from the fee.
 
-1. **Live Ootle contract:** indexer requests were blocked with HTTP 403 in this environment. Its deployed bytecode, owner rule, balances, outstanding orders and correspondence to the repository could not be independently verified. Do not assume the new protections cover existing funds.
-2. **Engine integration:** no on-chain or engine-harness adversarial transaction tests were run. Rollback after failed recipient deposits, reentrancy behavior, concurrent settlement, native upgrade denial and unauthorized transaction rejection require integration tests against the actual engine build. Unit tests are not substitutes for these tests.
-3. **Wallet/infrastructure:** wallet key security, validator consensus, token recall/freeze rules, DNS, TLS, host permissions, and GitHub/Sites account access are outside the audited application source. A compromised host could replace the app and its integrity hashes; a compromised wallet can sign malicious transactions.
-4. **Third-party JavaScript:** WalletConnect 2.23.7 and its complete static import graph (seven modules) are vendored locally with hashes in `security/vendor-manifest.json`; CSP allows scripts only from this site. This removes mutable remote-script loading, but is not a full audit of bundled third-party source. The transitive npm advisory inventory was not reconstructed. Future vendor updates require explicit review.
-5. **Dispute fairness:** admins can choose which original party wins a disputed order. This prevents arbitrary recipient diversion, not biased or collusive decisions. Owner delivery recording is trusted. Admins can delegate to other admins by design; a compromised admin can extend that trust before revocation.
-6. **Availability and privacy:** no SLA, DDoS/load test, private key recovery flow, durable cross-device catalogue database or independent cryptographic audit. Listings/orders remain partly browser-local. Encryption protects delivery content, not public order metadata or a compromised browser. Legacy private delivery keys remain in localStorage until migrated during use.
-7. **Browser integration:** full interactive testing in the real Universe/WalletConnect host and verification of production response headers remain required. Exact success-format checks may reject unsupported provider responses until deliberately adapted.
+Existing orders remain governed by their original deployed components. New source code does not retroactively change old escrow protections.
 
-## Activation requirements
+### Timing and seller identity
 
-Publish the reviewed v0.9.0 artifact and create a new component from the intended owner wallet. Verify its deployed template, `OwnerRule::None`, XTM resource, platform address, constructor signer, and test settlement behavior before enabling purchases. Update the site's explicit component configuration and security readiness flag only after verification. Keep all old component IDs for their existing orders; do not mutate IDs or silently migrate pooled funds. Website publication alone does not activate a new contract. No wallet transaction or admin grant was performed during this audit.
+The seller timeout is 1,008 consensus epochs, approximately 14 days after recorded purchase. Shipping or delivery need not be recorded for an eligible claim. An open payment dispute blocks the timeout claim, and time alone does not transfer funds. Buyers must raise payment disputes before settlement.
 
-After any JavaScript changes, run `python scripts/update-script-integrity.py` and `node tests/security.cjs` before publishing.
+Usernames are reserved atomically with the first listing and are tied to the transaction signing key. Names are case-insensitive, bounded, and unique within this marketplace component. There is no username transfer, rename, or admin reassignment method. Accounts sharing a signing key share an identity; usernames do not establish real-world identity.
 
-## Purchase-window update — v0.10.0
+### Website and wallet handling
 
-The contract now records `purchase_recorded_epoch` from consensus during `buy` and allows the original seller to claim at that epoch plus 1,008 epochs. Delivery is not required and cannot reset the deadline. This permits claims before delivery if no dispute is open; buyer disputes must precede settlement. Disputed/settled checks and the original-party settlement restrictions remain in place. Existing deployed orders keep their original code.
+- Both the embedded Tari Universe wallet and WalletConnect/Tari Asset Vault are supported. An unavailable Universe bridge is skipped in standalone browsers.
+- The Universe bridge checks its parent origin and message source. Scripts and wallet dependencies are stored with the site, with integrity/provenance hashes and a restrictive script policy.
+- Transaction handling checks the wallet, network, account, and accepted execution result; submissions are serialized and unconfirmed transaction IDs are tracked.
+- Before submission, the app rechecks the current component configuration. Checkout compares listing details with fresh contract state, and old listing IDs cannot be reused against the new component.
+- Rendering and browser storage use input validation, escaping, bounded data, and guarded reads. Contract arithmetic and input sizes are checked.
+- Shipping information is encrypted in the browser for the seller. New delivery keys are non-extractable browser CryptoKeys; legacy keys migrate when used.
 
-Validation: eight Rust unit tests pass, including purchase deadline arithmetic and overflow rejection; 46 existing browser/security regression checks pass; the v0.10.0 release WASM builds successfully. These are local checks, not new on-chain integration or adversarial evidence. The artifact is pending Ootle publication and instantiation.
+## Validation recorded
 
-## Seller usernames — v0.11.0
+- **14 Rust unit tests** passed for settlement helpers, amounts, admin signing keys, purchase deadlines, and username rules.
+- The **v0.11.0 WASM release build** succeeded with overflow checks. Versioned artifacts and checksums are retained in `contracts/artifacts/`.
+- **66 JavaScript/security regression checks** passed after the dual-wallet connection fix. They include provider routing, bridge message boundaries, storage and rendering validation, transaction classification, username display, and script integrity.
+- Targeted local checks exercised pagination boundaries, dispute-order eligibility, receipt decoding, and rejection of an unexpected component configuration.
+- An earlier dependency advisory query covered 34 locked Rust packages and the direct WalletConnect package, with no listed advisories returned at that time. This was not a full transitive dependency audit or a fresh scan for every website change.
+- An earlier limited secret-pattern scan found no matching private-key blocks or token patterns in the checked first-party files. This is not exhaustive secret detection.
 
-Usernames are reserved atomically with listing creation. The registry uses the transaction signer, with one immutable lowercase name per key and a reverse index preventing duplicates. No caller-supplied identity, rename, transfer, or admin reassignment is accepted. Names are limited to 3–24 ASCII letters, numbers, and underscores, with selected official names reserved. Browser availability is advisory; only a successful contract transaction reserves the name. Display names are loaded from the registry and linked to the listing signer rather than trusted from local storage.
+Local tests and source inspection do not simulate all Ootle engine behavior or prove successful browser-to-wallet transactions.
 
-Scope: uniqueness is per marketplace component and signing key, not per human or across all Tari accounts/components. Multiple accounts may share a key. The website uses the connected payment address, but contract username ownership is the signer regardless of payout address. No key-rotation/recovery or namespace migration mechanism is implemented.
+## Remaining limits and testing
 
-Validation: 14 Rust unit tests and 58 JavaScript/security checks pass, and the v0.11.0 WASM release builds. Added checks cover normalization, case-insensitive collisions, same-key reuse, prevention of multiple names per key, invalid/reserved names, verified registry display, mismatched registry indexes, and unavailable-state fallback. Live multi-wallet/concurrent transaction and rollback tests remain required before activating `SELLER_USERNAMES_READY`. Earlier audit limitations still apply; this is not a new full audit.
+Before any production use, obtain independent review and validate complete multi-wallet transaction flows, concurrent operations, failed-recipient rollback, unauthorized action rejection, native upgrade restrictions, and settlement behavior on the target engine version.
+
+The project relies on wallet security, the indexer, network consensus, token rules, hosting, and repository access controls. These dependencies have not received a comprehensive audit as part of this work. WalletConnect's complete dependency tree and production response-header delivery also require further verification.
+
+Admins can delegate privileges and decide disputed outcomes. Role management and recipient restrictions do not eliminate administrative trust or biased decisions.
+
+Listings, photos, and some order information remain browser-local. There is no durable shared catalogue, complete cross-device recovery, delivery-key backup, or key-rotation flow. Clearing browser data can lose decryption access. Encryption protects delivery content, not public marketplace metadata or a compromised device.
+
+Availability/load testing, payment-case evidence uploads, automatic appeals, and guaranteed resolution times are not provided. Settled orders cannot be reopened by the contract's dispute flow.
+
+## Maintenance and reporting
+
+After JavaScript changes, regenerate script integrity hashes and run the regression checks before publishing. Contract changes require a new component and a reviewed transition that preserves existing orders.
+
+Report suspected issues privately to the repository owner first when reproduction details could put users at risk. Do not post credentials, private keys, seed phrases, private delivery information, or actionable exploit instructions in public issues. Public updates should describe impact, fixes, validation, and remaining limitations without exposing sensitive material.
