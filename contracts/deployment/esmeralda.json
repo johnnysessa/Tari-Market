@@ -10,5 +10,39 @@
   "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162",
   "escrow_template_address": "template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac",
   "escrow_market_component_address": "component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9",
-  "escrow_instantiation_transaction": "3fd30dca40e527708598d06cd650a5f4a70d396a93ff0ad9cd9a48e41a6874a6"
+  "escrow_instantiation_transaction": "3fd30dca40e527708598d06cd650a5f4a70d396a93ff0ad9cd9a48e41a6874a6",
+  "pending_admin_upgrade": {
+    "source_version": "0.8.0",
+    "status": "compiled_pending_publish_and_instantiation",
+    "artifact": "contracts/artifacts/XTM_Market_AdminDelegation_v0.8.0_Esmeralda.wasm",
+    "scope": "Admin management and dispute decisions; existing components retain existing permissions"
+  },
+  "pending_security_upgrade": {
+    "source_version": "0.9.0",
+    "status": "compiled_not_published_or_instantiated",
+    "artifact": "contracts/artifacts/XTM_Market_TwoPartyEscrow_Security_v0.9.0_Esmeralda.wasm",
+    "engine_owner_rule": "None",
+    "escrow_destinations": "original buyer refund address or original seller payment address only",
+    "platform_fee": "separate seller-authorized payment bucket, never escrow",
+    "activation_gate": "SECURITY_UPGRADE_READY=false",
+    "legacy_warning": "Existing components and escrow retain their original code and permissions."
+  },
+  "pending_purchase_window_upgrade": {
+    "source_version": "0.10.0",
+    "status": "compiled_not_published_or_instantiated",
+    "artifact": "contracts/artifacts/XTM_Market_PurchaseClaimWindow_v0.10.0_Esmeralda.wasm",
+    "sha256": "ce6e6557bd9c5601ad24ea0d9b04642008b6ac0128976110b9e448277cb62e61",
+    "seller_claim_window": "1008 consensus epochs after purchase_recorded_epoch; delivery not required",
+    "activation_gate": "SECURITY_UPGRADE_READY=false",
+    "legacy_warning": "Existing components and orders retain their original contract rules."
+  },
+  "pending_seller_username_upgrade": {
+    "source_version": "0.11.0",
+    "status": "compiled_not_published_or_instantiated",
+    "artifact": "contracts/artifacts/XTM_Market_SellerUsernames_v0.11.0_Esmeralda.wasm",
+    "sha256": "689b7224e5f571bb3b6a71fa83f31558e1c6d8637ed17a915974c2c09299d65d",
+    "scope": "Unique immutable lowercase username per transaction signing key within this marketplace component; reserved atomically with first listing",
+    "activation_gate": "SELLER_USERNAMES_READY=false; existing purchase readiness gates also apply",
+    "legacy_warning": "Existing components retain original code; username reservations do not span independent components."
+  }
 }

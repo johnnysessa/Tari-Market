@@ -1,0 +1,44 @@
+[
+  {
+    "url": "https://esm.sh/@walletconnect/sign-client@2.23.7?bundle",
+    "file": "dist/assets/vendor/walletconnect.mjs",
+    "upstream_sha256": "76ef332775cdc6082d26cd438ebcf4526216db0aa37aa158238239f550e11006",
+    "local_sha256": "ee53c612f41f280174dbf4ed1335875b124e8a57352fa4cf82724c29c2509433"
+  },
+  {
+    "url": "https://esm.sh/@walletconnect/sign-client@2.23.7/es2022/sign-client.bundle.mjs",
+    "file": "dist/assets/vendor/14f77fd544f8b98f.mjs",
+    "upstream_sha256": "3c3334dbf0f2ecfb7935efb0241d3cf3b57ac34871a112a725a7588d48857ffa",
+    "local_sha256": "8ff02fed73cc6e3477fe9621f2f6304cff98da50e3c604442e3c64dc51a6c174"
+  },
+  {
+    "url": "https://esm.sh/node/events.mjs",
+    "file": "dist/assets/vendor/8286d33a1ce5055b.mjs",
+    "upstream_sha256": "4c6150b88c1444aa1fe9331013e3f37eda9836206f629f7f3ae8f3743dd90fa8",
+    "local_sha256": "f2e0c7d84149251e42a41c1d178d8ce3719bcb53c7de06cb1cb954af9b08e856"
+  },
+  {
+    "url": "https://esm.sh/node/async_hooks.mjs",
+    "file": "dist/assets/vendor/b9737199fdd59f88.mjs",
+    "upstream_sha256": "b7862dbfba8bbbca956f19e4e08280b529e4b27468779775a9093aef8c92dc1d",
+    "local_sha256": "b7862dbfba8bbbca956f19e4e08280b529e4b27468779775a9093aef8c92dc1d"
+  },
+  {
+    "url": "https://esm.sh/node/buffer.mjs",
+    "file": "dist/assets/vendor/16296a5ca2509267.mjs",
+    "upstream_sha256": "64fb61aa5f48644d685f9ceabedba60ea6b5d6ce03dac1943e863d00d9e574f3",
+    "local_sha256": "64fb61aa5f48644d685f9ceabedba60ea6b5d6ce03dac1943e863d00d9e574f3"
+  },
+  {
+    "url": "https://esm.sh/node/process.mjs",
+    "file": "dist/assets/vendor/a20988a4e1db6b4f.mjs",
+    "upstream_sha256": "79e7646e87709989f575ea4ce02e0877bc9303081567b1c0d412527917ae9e91",
+    "local_sha256": "7172829cbd9e1d9a42f38eeab639ab63f2ee94663b74130b1f2816b88a187e6d"
+  },
+  {
+    "url": "https://esm.sh/node/tty.mjs",
+    "file": "dist/assets/vendor/c253187f3a945751.mjs",
+    "upstream_sha256": "c66ff4b406bad449bfb2ced355f15badf16f4d9e035d2d300e33b5aeee64e3be",
+    "local_sha256": "c66ff4b406bad449bfb2ced355f15badf16f4d9e035d2d300e33b5aeee64e3be"
+  }
+]
