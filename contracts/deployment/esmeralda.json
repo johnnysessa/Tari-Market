@@ -1,16 +1,16 @@
 {
   "network": "esmeralda",
-  "contract_version": "0.6.0-source",
-  "status": "v0.6_item_price_fee_only_upgrade_pending_publish",
+  "contract_version": "0.11.0",
+  "status": "esmeralda_testnet_open_integration_testing",
   "platform_fee_percent": 3,
   "platform_payment_component": "component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c",
-  "template_address": "template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac",
-  "market_component_address": "component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9",
-  "previous_market_component": "component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15",
+  "template_address": "template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2",
+  "market_component_address": "component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c",
+  "previous_market_component": "component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9",
   "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162",
-  "escrow_template_address": "template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac",
-  "escrow_market_component_address": "component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9",
-  "escrow_instantiation_transaction": "3fd30dca40e527708598d06cd650a5f4a70d396a93ff0ad9cd9a48e41a6874a6",
+  "escrow_template_address": "template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2",
+  "escrow_market_component_address": "component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c",
+  "escrow_instantiation_transaction": "e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f",
   "pending_admin_upgrade": {
     "source_version": "0.8.0",
     "status": "compiled_pending_publish_and_instantiation",
@@ -38,11 +38,18 @@
   },
   "pending_seller_username_upgrade": {
     "source_version": "0.11.0",
-    "status": "compiled_not_published_or_instantiated",
+    "status": "published_instantiated_testnet_testing",
     "artifact": "contracts/artifacts/XTM_Market_SellerUsernames_v0.11.0_Esmeralda.wasm",
     "sha256": "689b7224e5f571bb3b6a71fa83f31558e1c6d8637ed17a915974c2c09299d65d",
     "scope": "Unique immutable lowercase username per transaction signing key within this marketplace component; reserved atomically with first listing",
-    "activation_gate": "SELLER_USERNAMES_READY=false; existing purchase readiness gates also apply",
+    "activation_gate": "Enabled for user-authorized Esmeralda testing; not a production validation",
     "legacy_warning": "Existing components retain original code; username reservations do not span independent components."
+  },
+  "template_publish_transaction": "5bebf379a868b4d396aa9ff0b68795abff90457097095022e2690b2fb209aa09",
+  "verification": {
+    "source": "user supplied accepted receipts and live indexer verified=true",
+    "owner_rule": "None",
+    "state_field_count": 15,
+    "end_to_end_wallet_flows": "pending user testing"
   }
 }

@@ -112,6 +112,7 @@
     isTariWallet: true,
     /** Extra, and safe to ignore: true only when running inside a wallet's iframe. */
     isEmbedded: embedded,
+    isAvailable: embedded,
     info: { name: "Tari Universe", rdns: "mw.tari.universe", embedded: true },
 
     request: function (args) {

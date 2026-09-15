@@ -39,7 +39,7 @@
     for(const order of orders){if('shippingName' in order||'shippingAddress' in order){delete order.shippingName;delete order.shippingAddress;scrubbedOrderDetails=true}}
     if(scrubbedOrderDetails)localStorage.setItem('xtm-market-orders',JSON.stringify(orders));
     let selected=null,selectedQuote=null,deadline=0,timerHandle,currentMarketPage=1;
-    const PAGE_SIZE_OPTIONS=[8,16,24,32,64];
+    const PAGE_SIZE_OPTIONS=[8,16,24,32,64,128];
     const savedPageSize=Number(readStored('xtm-market-page-size',8));
     let itemsPerPage=PAGE_SIZE_OPTIONS.includes(savedPageSize)?savedPageSize:8;
     let walletConnection={connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',account:null,session:null,client:null,capabilities:null};
@@ -90,10 +90,10 @@
     }
     // Keep the active component address for existing-order actions until the v0.6
     // template is instantiated, then replace the address and set this flag true.
-    const MARKET_COMPONENT_ADDRESS='component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9';
-    const ITEM_PRICE_FEE_READY=false;
-    const SECURITY_UPGRADE_READY=false;
-    const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,'component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
+    const MARKET_COMPONENT_ADDRESS='component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c';
+    const ITEM_PRICE_FEE_READY=true;
+    const SECURITY_UPGRADE_READY=true;
+    const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
     const newPurchasesReady=()=>Boolean(MARKET_COMPONENT_ADDRESS)&&ITEM_PRICE_FEE_READY&&SECURITY_UPGRADE_READY&&SELLER_USERNAMES_READY;
     const MAX_TRANSACTION_FEE=5000;
     const ESMERALDA_NETWORK_BYTE=38;
@@ -105,7 +105,21 @@
     function values(item){const itemXtm=Number(item.price)||0,shippingXtm=Number(item.shipping)||0,totalXtm=itemXtm+shippingXtm;return{itemXtm,shippingXtm,totalXtm,itemUsd:itemXtm*xtmRate(),usd:totalXtm*xtmRate(),xtm:totalXtm}}
     function money(n){return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n)}
     function xtm(n){return n.toLocaleString(undefined,{maximumFractionDigits:2})+' XTM'}
+    function decodeChainValue(value){
+      if(!value||typeof value!=='object')return value;
+      if(value['@cbor']==='tag'){const decoded=decodeChainValue(value.value),prefix={128:'component_',131:'resource_',132:'vault_'}[value.tag];return prefix&&typeof decoded==='string'&&/^[0-9a-f]{64}$/i.test(decoded)?prefix+decoded.toLowerCase():decoded}
+      if(value['@cbor']==='bytes')return value.hex;
+      if(Array.isArray(value))return value.map(decodeChainValue);
+      return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,decodeChainValue(item)]));
+    }
+    async function verifyActiveMarket(){
+      const response=await fetch(`${INDEXER_URL}substates/${MARKET_COMPONENT_ADDRESS}?local_search_only=false`,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw new Error('Cannot verify the Esmeralda marketplace. Try again.');
+      const payload=await response.json(),component=payload?.substate?.Component,state=decodeChainValue(component?.body?.state);
+      if(payload.verified!==true||component?.header?.template_address!=='b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2'||component?.header?.owner_rule!=='None'||!Array.isArray(state)||state.length!==15||state[0]!=='resource_0101010101010101010101010101010101010101010101010101010101010101'||state[1]!==MARKET_OWNER_ACCOUNT||state[10]!=='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828')throw new Error('Marketplace configuration could not be verified. Transaction stopped.');
+    }
     function firstAddress(value){
+      if(value&&typeof value==='object'&&value['@cbor'])return firstAddress(decodeChainValue(value));
       if(typeof value==='string')return value;
       if(!value||typeof value!=='object')return '';
       for(const key of ['address','component_address','account_address']){
@@ -114,7 +128,7 @@
       for(const child of Object.values(value)){const found=firstAddress(child);if(found&&/^(component_|account_|[0-9a-f]{32})/i.test(found))return found}
       return ''
     }
-    const SELLER_USERNAMES_READY=false;
+    const SELLER_USERNAMES_READY=true;
     let sellerUsernames=new Map(),usernameOwners=new Map(),usernameListings=new Map(),usernameRegistryReady=false;
     function normalizeSellerUsername(value){const name=String(value||'').trim().toLowerCase();return /^[a-z0-9_]{3,24}$/.test(name)&&!['admin','administrator','owner','support','xtm_market','tari','ootle'].includes(name)?name:''}
     function sellerIdentity(item){const row=usernameListings.get(String(item.chainId));return row&&row.address===String(item.paymentAddress||'').toLowerCase()?'@'+row.name:shortAddress(item.paymentAddress||'Seller wallet pending')}
@@ -151,7 +165,7 @@
       try{
         const response=await fetch(`${INDEXER_URL}substates/${encodeURIComponent(MARKET_COMPONENT_ADDRESS)}?local_search_only=false`,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
         if(!response.ok)throw new Error();
-        const state=(await response.json())?.substate?.Component?.body?.state;
+        const state=decodeChainValue((await response.json())?.substate?.Component?.body?.state);
         if(sequence!==roleRefreshSequence)return;
         adminRolesReady=Array.isArray(state)&&state.length>=12&&typeof state[10]==='string'&&Boolean(state[11])&&typeof state[11]==='object';
         adminRoles=new Map(adminRolesReady?Object.entries(state[11]).filter(([address,key])=>/^component_[0-9a-f]{64}$/i.test(address)&&/^[0-9a-f]{64}$/i.test(key)).map(([address,key])=>[address.toLowerCase(),key.toLowerCase()]):[]);adminRolesCheckedAt=Date.now();
@@ -243,6 +257,16 @@
       })
     }
     async function prepareListingImages(files){const prepared=[];for(const file of files)prepared.push(await prepareListingImage(file));return prepared.filter(Boolean)}
+    function hasAvailableTariProvider(){const provider=window.tari;return typeof provider?.request==='function'&&provider.isAvailable!==false&&(!(provider===window.tariUniverse||provider.info?.rdns==='mw.tari.universe')||provider.isEmbedded===true)}
+    function renderWalletConnectionChoice(){
+      const select=$('#walletConnectionMethod'),available=hasAvailableTariProvider();
+      select.querySelector('option[value="provider"]').disabled=!available;
+      if(!available&&select.value==='provider')select.value='walletconnect';
+      const embedded=select.value==='provider';
+      $('#walletConnectInstructions').hidden=embedded||walletConnection.connected;
+      $('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='window.tari'?'Tari browser wallet':'WalletConnect'}.`:embedded?'Approve access in your Tari Universe or browser wallet.':'Pair your Esmeralda Tari Asset Vault using WalletConnect.';
+      select.disabled=walletConnection.connected||$('#connectWallet').disabled;
+    }
     let walletLibrariesPromise;
     function loadWalletLibraries(){
       if(!walletLibrariesPromise)walletLibrariesPromise=import('./vendor/walletconnect.mjs').then(sign=>({SignClient:sign.default||sign.SignClient}));
@@ -261,14 +285,14 @@
     }
     async function walletRequest(method,params={}){
       if(walletConnection.transport==='window.tari'){
-        if(!window.tari?.request)throw new Error('The Tari wallet provider is no longer available.');
+        if(!hasAvailableTariProvider())throw new Error('The Tari wallet provider is no longer available.');
         return window.tari.request({method,params})
       }
       if(!walletConnection.client||!walletConnection.session)throw new Error('Connect your Tari wallet first.');
       return walletConnection.client.request({topic:walletConnection.session.topic,chainId:WALLETCONNECT_CHAIN,request:{method,params}})
     }
     async function finishWalletSession(session,client){
-      walletConnection={...walletConnection,client,session};
+      walletConnection={...walletConnection,transport:'walletconnect',client,session};
       const accountResponse=await walletRequest('tari_getDefaultAccount',{});
       const account=accountResponse?.account||accountResponse;
       const sessionAddress=session.namespaces?.tari?.accounts?.[0]?.split(':').slice(2).join(':')||'';
@@ -283,7 +307,7 @@
       const accountAddress=firstAddress(accounts?.[0]||accounts);
       if(!/^component_[0-9a-f]{64}$/i.test(accountAddress))throw new Error('No Tari account was returned by the wallet.');
       const [network,walletAddress,capabilities]=await Promise.all([
-        window.tari.request({method:'tari_getNetwork'}).catch(()=> 'esmeralda'),
+        window.tari.request({method:'tari_getNetwork'}),
         window.tari.request({method:'tari_getWalletAddress'}).catch(()=> ''),
         window.tari.request({method:'tari_getCapabilities'}).catch(()=> null)
       ]);
@@ -296,7 +320,7 @@
       $('#pairingPanel').classList.add('show')
     }
     async function restoreWalletSession(){
-      if(window.tari?.request){
+      if(hasAvailableTariProvider()){
         try{const accounts=await window.tari.request({method:'tari_getAccounts'});if(accounts?.length){await finishWindowTari(accounts);return}}catch(error){console.warn('window.tari session restore failed',error)}
       }
       try{
@@ -359,6 +383,7 @@
         sameWallet();
         const currentAccount=firstAddress(await walletRequest(identity.transport==='window.tari'?'tari_getAccounts':'tari_getDefaultAccount',{}));sameWallet();
         if(String(currentAccount).toLowerCase()!==identity.account.toLowerCase())throw new Error('The wallet account changed. Reconnect before submitting.');
+        await verifyActiveMarket();sameWallet();
         let submitted;
         if(identity.transport==='window.tari'){
           const network=await walletRequest('tari_getNetwork');sameWallet();
@@ -418,9 +443,9 @@
     async function connectWallet(event){
       event.preventDefault();
       const button=$('#connectWallet'),errorBox=$('#walletError');
-      errorBox.classList.remove('show');button.disabled=true;button.textContent='Connecting…';
+      errorBox.classList.remove('show');button.disabled=true;button.textContent='Connecting…';$('#walletConnectionMethod').disabled=true;
       try{
-        if(window.tari?.request){const accounts=await window.tari.request({method:'tari_requestAccounts'});await finishWindowTari(accounts);return}
+        if($('#walletConnectionMethod').value==='provider'){if(!hasAvailableTariProvider())throw new Error('Tari Universe is unavailable in this tab. Choose WalletConnect / Tari Asset Vault.');const accounts=await window.tari.request({method:'tari_requestAccounts'});await finishWindowTari(accounts);return}
         const client=await getWalletClient(),existing=client.session.getAll().find(candidate=>candidate.namespaces?.tari);
         if(existing){await finishWalletSession(existing,client);return}
         const {uri,approval}=await client.connect({requiredNamespaces:{tari:{methods:['tari_getDefaultAccount','tari_submitTransaction','tari_getTransactionResult'],chains:[WALLETCONNECT_CHAIN],events:[]}},sessionProperties:{required_permissions:JSON.stringify([{Accounts:['Read',null]},{Transactions:'Create'},{Transactions:'Read'}]),optional_permissions:'[]'}});
@@ -432,7 +457,7 @@
         walletConnection={...walletConnection,connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,capabilities:null};
         errorBox.textContent=error.message||'The wallet connection was not approved.';
         errorBox.classList.add('show')
-      }finally{button.disabled=false;button.textContent='Connect wallet'}
+      }finally{button.disabled=false;button.textContent='Connect wallet';renderWalletConnectionChoice()}
     }
     async function disconnectWallet(){
       const {client,session,transport}=walletConnection;
@@ -450,9 +475,10 @@
       return {name,address}
     }
     async function verifyPurchaseListing(item,quote){
+      if(item.marketComponent!==MARKET_COMPONENT_ADDRESS)throw new Error("This listing belongs to an older marketplace. Ask the seller to list it again on this testnet component.");
       const response=await fetch(`${INDEXER_URL}substates/${encodeURIComponent(MARKET_COMPONENT_ADDRESS)}?local_search_only=false`,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
       if(!response.ok)throw new Error('Could not verify the listing on Ootle.');
-      const state=(await response.json())?.substate?.Component?.body?.state,rows=Array.isArray(state)?state[3]:state?.listings;
+      const state=decodeChainValue((await response.json())?.substate?.Component?.body?.state),rows=Array.isArray(state)?state[3]:state?.listings;
       const listing=Object.values(rows||{}).find(row=>Number(reviewField(row,0,'id'))===item.chainId);
       if(!listing||reviewField(listing,9,'active')!==true||Number(reviewField(listing,8,'inventory'))<1||String(reviewField(listing,1,'title'))!==item.name||paymentAddress(reviewField(listing,5,'seller_payment_address'))!==String(item.paymentAddress).toLowerCase()||String(reviewField(listing,7,'delivery_public_key'))!==item.deliveryPublicKey||String(reviewField(listing,3,'xtm_price'))!==String(atomicTari(quote.itemXtm))||String(reviewField(listing,4,'shipping_xtm'))!==String(quote.shippingXtm===0?0:atomicTari(quote.shippingXtm)))throw new Error('Listing details differ from Ootle. Refresh and review the item before paying.');
     }
@@ -555,7 +581,7 @@
     }
     function cycleListingPhoto(itemId,direction){const gallery=document.querySelector(`[data-photo-gallery="${itemId}"]`);if(!gallery)return;let sources=[];try{sources=JSON.parse(gallery.dataset.photoSources||'[]')}catch{}if(sources.length<2)return;const next=(Number(gallery.dataset.photoIndex||0)+direction+sources.length)%sources.length,img=gallery.querySelector('img'),item=listings.find(candidate=>candidate.id===itemId);gallery.dataset.photoIndex=next;img.src=sources[next];img.alt=`${item?.alt||item?.name||'Listing'} — photo ${next+1} of ${sources.length}`;const count=gallery.querySelector('[data-photo-count]');if(count)count.textContent=`${next+1} / ${sources.length}`}
     function openProductDetail(itemId){const item=listings.find(candidate=>candidate.id===itemId);if(!item)return;const v=values(item),catalogPhoto=catalogImages[item.id],photos=listingImages(item),fallback=safeImageSrc(catalogPhoto?.src),photoList=photos.length?photos:(fallback?[fallback]:[]),alt=item.alt||catalogPhoto?.alt||item.name,sample=item.sample?sampleTrustFor(item.id):null,trust=sample?{score:sample.score,count:sample.count}:trustRecord(item.paymentAddress),score=sample?`${trust.score.toFixed(1)} ★ · ${trust.count} verified ${trust.count===1?'review':'reviews'}`:trust?.ratingCount?`${(trust.totalStars/trust.ratingCount).toFixed(1)} ★ · ${trust.ratingCount} verified ${trust.ratingCount===1?'review':'reviews'}`:'New seller',seller=item.sample?sampleSellerName(item.id):sellerIdentity(item),purchasable=Boolean(item.chainId&&item.deliveryPublicKey&&item.paymentAddress&&newPurchasesReady());const gallery=photoList.length?`<div class="detail-main-photo"><img id="productDetailImage" src="${photoList[0]}" alt="${escapeHtml(alt)} — large photo 1 of ${photoList.length}"></div>${photoList.length>1?`<div class="detail-thumbnails" aria-label="Product photos">${photoList.map((src,index)=>`<button class="detail-thumb ${index===0?'active':''}" type="button" data-detail-photo="${index}" aria-label="View photo ${index+1}"><img src="${src}" alt=""></button>`).join('')}</div>`:''}`:'<div class="detail-main-photo"><div class="product-placeholder">No image added</div></div>';$('#productDetailContent').innerHTML=`<div class="product-detail"><section>${gallery}</section><section class="detail-copy"><span class="item-category">${escapeHtml(listingCategory(item))}</span><h2 id="productDetailTitle">${escapeHtml(item.name)}</h2><p class="detail-description">${escapeHtml(item.description)}</p><div class="detail-pricing"><div class="row"><span>Item price</span><strong>${xtm(v.itemXtm)}</strong></div><div class="row"><span>Shipping</span><strong>${xtm(v.shippingXtm)}</strong></div><div class="row"><span>Total</span><strong>${xtm(v.totalXtm)}</strong></div><div class="row"><span>USD reference</span><strong>${money(v.usd)}</strong></div><div class="row"><span>Available</span><strong>${item.stock} in stock</strong></div><div class="row"><span>Protection</span><strong>Escrow funded at purchase</strong></div></div><div class="seller-summary"><h3>About the seller</h3><div class="seller-summary-score">${escapeHtml(score)}</div><div class="seller-summary-wallet">${escapeHtml(seller)}</div><div class="fine">${item.sample?'Fictional username and sample reviews for this catalog preview.':"Ratings are attached to the seller's connected Ootle wallet and come from verified completed sales."}</div></div><div class="detail-actions"><button class="button" id="productSellerProfile" type="button">Seller profile &amp; reviews</button><button class="button" id="productSellerItems" type="button">See seller’s other items</button><button class="button primary" id="productBuy" type="button" ${item.stock>0?'':'disabled'}>${item.stock>0?'Buy':'Sold out'}</button></div></section></div>`;$('#productDetailContent').querySelectorAll('[data-detail-photo]').forEach(button=>button.onclick=()=>{const index=Number(button.dataset.detailPhoto),image=$('#productDetailImage');image.src=photoList[index];image.alt=`${alt} — large photo ${index+1} of ${photoList.length}`;$('#productDetailContent').querySelectorAll('[data-detail-photo]').forEach(candidate=>candidate.classList.toggle('active',candidate===button))});$('#productSellerProfile').onclick=()=>{$('#productDialog').close();openSellerProfile(item.id)};$('#productSellerItems').onclick=()=>showSellerItems(item);$('#productBuy').onclick=()=>{$('#productDialog').close();selectListing(item.id)};$('#productDialog').showModal()}
-    function purchaseBlockReason(item){if(!item||item.stock<=0)return'This item is sold out.';if(item.sample||!item.chainId||!item.deliveryPublicKey||!item.paymentAddress)return'This is a catalog sample. You can review the checkout, but this item is not available for purchase.';if(!newPurchasesReady())return'Payments are paused until the upgraded Ootle escrow contract is activated.';return''}
+    function purchaseBlockReason(item){if(item?.chainId&&item.marketComponent!==MARKET_COMPONENT_ADDRESS)return'This older listing must be recreated on the new testnet marketplace.';if(!item||item.stock<=0)return'This item is sold out.';if(item.sample||!item.chainId||!item.deliveryPublicKey||!item.paymentAddress)return'This is a catalog sample. You can review the checkout, but this item is not available for purchase.';if(!newPurchasesReady())return'Payments are paused until the upgraded Ootle escrow contract is activated.';return''}
     function selectListing(id){const item=listings.find(x=>x.id===id);if(!item||item.stock<=0){toast('This item is no longer available');return}if(selected?.id!==id){clearShippingFields()}selected=item;selectedQuote=values(selected);deadline=Date.now()+600000;renderCheckout();clearInterval(timerHandle);timerHandle=setInterval(updateTimer,1000);updateTimer();setPage('checkout')}
     function renderPurchaseItem(){if(!selected)return;const image=listingImages(selected)[0]||safeImageSrc(catalogImages[selected.id]?.src),reason=purchaseBlockReason(selected);$('#purchaseItem').innerHTML=`${image?`<img class="purchase-photo" src="${image}" alt="${escapeHtml(selected.name)}">`:''}<div class="item-category">${escapeHtml(listingCategory(selected))}</div><h2>${escapeHtml(selected.name)}</h2><p>${escapeHtml(selected.description)}</p><p>Quantity: 1 · ${selected.stock} available</p><p>Seller: <span class="case-address">${escapeHtml(selected.sample?sampleSellerName(selected.id):selected.paymentAddress||'Seller not connected')}</span></p>${reason?`<div class="purchase-notice" role="status">${escapeHtml(reason)}</div>`:''}`}
     function renderCheckout(){renderPurchaseItem();const v=selectedQuote||values(selected),address=selected.paymentAddress||'';$('#checkoutEmpty').style.display='none';$('#checkoutSummary').classList.add('active');$('#summaryName').textContent=selected.name;$('#summaryReference').textContent='Item and shipping are fixed in XTM';$('#payAmount').textContent=xtm(v.totalXtm);$('#sumItem').textContent=xtm(v.itemXtm);$('#sumShipping').textContent=xtm(v.shippingXtm);$('#sumUsd').textContent=money(v.usd);$('#sumSellerTrust').textContent=selected.sample?sampleSellerName(selected.id)+' · Example':trustLabel(address);$('#addressRow').style.display=address?'flex':'none';$('#sumPaymentAddress').textContent=address;renderWalletState()}
@@ -608,13 +634,13 @@
     async function refreshPaymentCases(){
       if(!walletConnection.connected){renderPaymentCases();return}
       if(paymentRefreshTask)return paymentRefreshTask;
-      const components=[...new Set([MARKET_COMPONENT_ADDRESS,...orders.map(order=>order.marketComponent)])].filter(address=>TRUSTED_MARKET_COMPONENTS.has(address));
+      const components=[...new Set([MARKET_COMPONENT_ADDRESS,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9',...orders.map(order=>order.marketComponent)])].filter(address=>TRUSTED_MARKET_COMPONENTS.has(address));
       paymentRefreshTask=(async()=>{
         await Promise.all(components.map(async component=>{
           try{
             const response=await fetch(`${INDEXER_URL}substates/${encodeURIComponent(component)}?local_search_only=false`,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
             if(!response.ok)throw new Error('Indexer unavailable');
-            const state=(await response.json())?.substate?.Component?.body?.state;
+            const state=decodeChainValue((await response.json())?.substate?.Component?.body?.state);
             const chainOrders=Array.isArray(state)?state[4]:state?.orders,chainListings=Array.isArray(state)?state[3]:state?.listings;
             if(!chainOrders||typeof chainOrders!=='object')throw new Error('Orders unavailable');
             const listingMap=new Map(Object.entries(chainListings||{}).map(([key,value])=>[Number(reviewField(value,0,'id')??key),String(reviewField(value,1,'title')||'')]));
@@ -627,6 +653,25 @@
       renderPaymentCases();
       try{await paymentRefreshTask}finally{paymentRefreshTask=null;renderPaymentCases()}
     }
+    let newCaseAction='dispute',caseOrderLoading=false;
+    function renderCaseOrderPicker(){
+      const select=$('#caseOrderSelect'),ready=walletConnection.connected?paymentRows().filter(order=>order.verified&&paymentOwnedBy(order,walletConnection.accountAddress)&&!order.disputed&&!order.settled&&!paymentPending.has(order.key)):[];
+      select.innerHTML='<option value="">Choose an order</option>'+ready.map(order=>`<option value="${escapeHtml(order.key)}">Order #${order.id} · ${escapeHtml(order.title)}</option>`).join('');
+      select.disabled=caseOrderLoading||!ready.length;
+      $('#caseOrderContinue').disabled=caseOrderLoading||!ready.length||paymentBusy;
+      $('#caseOrderRefresh').disabled=caseOrderLoading;
+      const hasErrors=[...paymentSnapshots.values()].some(snapshot=>snapshot.error);
+      $('#caseOrderStatus').textContent=caseOrderLoading?'Checking your purchases…':!walletConnection.connected?'Connect the wallet used for your purchase, then start your request again.':ready.length?'Choose an unsettled purchase. You will review the request before approving it in your wallet.':hasErrors?'We could not verify your orders. Refresh to try again.':'No eligible purchases found for this wallet. Settled orders and orders with an existing dispute cannot start a new case.';
+    }
+    async function startPaymentCase(action){
+      if(paymentBusy||caseOrderLoading)return;
+      newCaseAction=action==='request'?'request':'dispute';setPage('cases');
+      if(!walletConnection.connected){$('#walletButton').click();toast('Connect your buying wallet, then select Request refund or Submit dispute.');return}
+      $('#caseOrderTitle').textContent=newCaseAction==='request'?'Request a refund':'Submit a dispute';
+      if(!$('#caseOrderDialog').open)$('#caseOrderDialog').showModal();
+      caseOrderLoading=true;renderCaseOrderPicker();
+      try{await refreshPaymentCases()}finally{caseOrderLoading=false;renderCaseOrderPicker()}
+    }
     function openPaymentAction(key,action){
       if(paymentBusy)return;
       const order=paymentRows().find(row=>row.key===key);if(!order||!order.verified||!walletConnection.connected)return;
@@ -636,6 +681,7 @@
       $('#paymentActionTitle').textContent=action==='refund'?'Approve full refund':action==='release'?'Release payment to seller':action==='request'?'Request a refund':'Open a payment dispute';
       $('#paymentActionText').textContent=ownerAction?(action==='refund'?'This settles the case by returning the full escrowed item and shipping payment to the buyer.':'This settles the case in the seller’s favor and releases escrow to the original seller. The security upgrade handles the marketplace fee separately.'):'This opens an on-chain dispute and pauses escrow for owner review. A refund is not automatic. The current contract records the case status but does not accept a reason or evidence attachments.';
       $('#paymentActionOrder').textContent='Order #'+order.id+' · '+order.title;
+      $('#paymentActionConfirm').textContent=ownerAction?'Approve in wallet':action==='request'?'Submit refund request':'Submit dispute';
       $('#paymentActionError').textContent='';$('#paymentActionConfirm').disabled=false;$('#paymentActionDialog').showModal();
     }
     async function submitPaymentAction(event){
@@ -758,6 +804,10 @@
     setInterval(()=>{renderWalletState();if(walletConnection.connected)refreshTrustScores()},30000);
     $('#adminRefresh').onclick=async()=>{if(!isMarketplaceAdmin())return;await Promise.all([refreshPaymentCases(),refreshTrustScores()])};
     $('#paymentGuide').onclick=()=>setPage('disputes');
+    document.querySelectorAll('[data-start-case]').forEach(button=>button.onclick=()=>startPaymentCase(button.dataset.startCase));
+    $('#caseOrderClose').onclick=()=>$('#caseOrderDialog').close();
+    $('#caseOrderRefresh').onclick=()=>startPaymentCase(newCaseAction);
+    $('#caseOrderForm').onsubmit=event=>{event.preventDefault();if(caseOrderLoading||paymentBusy)return;const key=$('#caseOrderSelect').value,order=paymentRows().find(row=>row.key===key);if(!order||!order.verified||!walletConnection.connected||!paymentOwnedBy(order,walletConnection.accountAddress)||order.disputed||order.settled||paymentPending.has(key)){renderCaseOrderPicker();return}$('#caseOrderDialog').close();openPaymentAction(key,newCaseAction)};
     $('#paymentActionForm').onsubmit=submitPaymentAction;
     $('#paymentActionClose').onclick=$('#paymentActionCancel').onclick=()=>{if(!paymentBusy){paymentAction=null;$('#paymentActionDialog').close()}};
     $('#paymentActionDialog').addEventListener('cancel',event=>{if(paymentBusy)event.preventDefault();else paymentAction=null});
@@ -766,7 +816,7 @@
     document.querySelectorAll('[data-page]').forEach(button=>button.onclick=()=>setPage(button.dataset.page));
     window.addEventListener('hashchange',()=>setPage(pageFromHash(),false));
     const dialog=$('#listingDialog');$('#listButton').onclick=()=>{const address=$('#listingForm').elements.paymentAddress;address.value=walletConnection.connected?walletConnection.accountAddress:'';address.readOnly=true;const known=[...usernameListings.values()].find(row=>row.address===String(walletConnection.accountAddress||'').toLowerCase());$('#sellerUsername').value=known?.name||'';updateUsernameStatus();dialog.showModal()};$('#closeDialog').onclick=$('#cancelDialog').onclick=()=>dialog.close();
-    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{const injected=Boolean(window.tari?.request);$('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='window.tari'?'window.tari':'WalletConnect'}.`:injected?'Approve access in your Tari wallet.':'Pair with Tari Asset Vault using WalletConnect.';$('#walletConnectInstructions').hidden=injected||walletConnection.connected;if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#disconnectWallet').onclick=disconnectWallet;
+    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{$('#walletConnectionMethod').value=hasAvailableTariProvider()?'provider':'walletconnect';renderWalletConnectionChoice();if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
     $('#closeProfile').onclick=()=>$('#profileDialog').close();
     $('#closeProduct').onclick=()=>$('#productDialog').close();
     function openReceiptReview(orderId){$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}
@@ -779,7 +829,7 @@
     function renderListingPreviews(){for(const url of listingPreviewUrls)URL.revokeObjectURL(url);listingPreviewUrls=[];const preview=$('#uploadPreview');if(!selectedListingFiles.length){preview.classList.remove('active');preview.innerHTML='';return}preview.classList.add('active');preview.innerHTML=selectedListingFiles.map((file,index)=>{const url=URL.createObjectURL(file);listingPreviewUrls.push(url);return `<div class="upload-preview-item"><img src="${url}" alt="Item photo ${index+1} preview"><button class="remove-upload" type="button" data-remove-upload="${index}" aria-label="Remove photo ${index+1}">×</button></div>`}).join('');preview.querySelectorAll('[data-remove-upload]').forEach(button=>button.onclick=()=>{selectedListingFiles.splice(Number(button.dataset.removeUpload),1);renderListingPreviews()})}
     $('#listingImage').onchange=e=>{const files=Array.from(e.target.files||[]);$('#listingError').textContent='';if(files.length>8){$('#listingError').textContent='Choose no more than 8 photos.';e.target.value='';selectedListingFiles=[];renderListingPreviews();return}const invalid=files.find(file=>!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024);if(invalid){$('#listingError').textContent=invalid.size>5*1024*1024?'Each photo must be smaller than 5 MB.':'Choose only JPG, PNG, or WebP photos.';e.target.value='';selectedListingFiles=[];renderListingPreviews();return}selectedListingFiles=files;renderListingPreviews()};
     $('#copyAddress').onclick=async()=>{const address=selected?.paymentAddress;if(!address)return;try{await navigator.clipboard.writeText(address);toast('Payment address copied')}catch{toast('Could not copy the address')}};
-    $('#listingForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,d=new FormData(form),button=$('#publishListing'),errorBox=$('#listingError');errorBox.textContent='';if(!newPurchasesReady()){errorBox.textContent='Listing creation and username registration will reopen after the marketplace upgrade is activated.';return}if(!walletConnection.connected){dialog.close();$('#walletDialog').showModal();toast('Connect your Tari wallet before listing');return}button.disabled=true;button.textContent='Preparing listing…';try{const id=Date.now(),name=String(d.get('name')).trim(),description=String(d.get('description')).trim(),category=String(d.get('category')||''),price=Number(d.get('price')),shipping=Number(d.get('shipping')),stock=Number(d.get('stock')),paymentAddress=String(d.get('paymentAddress')).trim(),sellerUsername=normalizeSellerUsername(d.get('sellerUsername'));if(!sellerUsername)throw new Error('Choose a valid seller username.');if(paymentAddress.toLowerCase()!==walletConnection.accountAddress.toLowerCase())throw new Error('Use your connected Tari wallet as the payment address.');if(!CATEGORIES.includes(category))throw new Error('Choose a category for this item.');if(!/^component_[0-9a-f]{64}$/i.test(paymentAddress))throw new Error('Paste an Ootle Tari wallet address beginning with component_.');const images=await prepareListingImages(selectedListingFiles),deliveryPublicKey=await generateDeliveryKeyPair(id),usdCents=Math.max(1,Math.round((price+shipping)*xtmRate()*100)),instructions=[componentCall(MARKET_COMPONENT_ADDRESS,'create_listing',[literal(cborText(name)),literal(cborHead(0,usdCents)),literal(cborHead(0,atomicTari(price))),literal(cborHead(0,shipping>0?atomicTari(shipping):0)),literal(cborAddress(paymentAddress,128)),literal(cborText(deliveryPublicKey)),literal(cborHead(0,stock)),literal(cborText(sellerUsername))])];button.textContent='Waiting for wallet…';const receipt=await submitInstructions(instructions,`Publish as @${sellerUsername}: ${name} for ${xtm(price)} plus ${xtm(shipping)} shipping`),chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('The listing transaction finalized, but its listing ID could not be read.');const listing={id,chainId,name,description,price,shipping,stock,paymentAddress,deliveryPublicKey,category,images,image:images[0]||'',alt:name,glow:'rgba(104,240,197,.2)'};listings.unshift(listing);selectedSeller=null;selectedCategory='All';currentMarketPage=1;if(!saveListings()){listings.shift();return}form.reset();selectedListingFiles=[];renderListingPreviews();dialog.close();await refreshTrustScores();render();toast(`Listing published with ${images.length} photo${images.length===1?'':'s'}`)}catch(problem){errorBox.textContent=problem.message||'Could not publish this listing.'}finally{button.disabled=false;button.textContent='Publish listing'}};
+    $('#listingForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,d=new FormData(form),button=$('#publishListing'),errorBox=$('#listingError');errorBox.textContent='';if(!newPurchasesReady()){errorBox.textContent='Listing creation and username registration will reopen after the marketplace upgrade is activated.';return}if(!walletConnection.connected){dialog.close();$('#walletDialog').showModal();toast('Connect your Tari wallet before listing');return}button.disabled=true;button.textContent='Preparing listing…';try{const id=Date.now(),name=String(d.get('name')).trim(),description=String(d.get('description')).trim(),category=String(d.get('category')||''),price=Number(d.get('price')),shipping=Number(d.get('shipping')),stock=Number(d.get('stock')),paymentAddress=String(d.get('paymentAddress')).trim(),sellerUsername=normalizeSellerUsername(d.get('sellerUsername'));if(!sellerUsername)throw new Error('Choose a valid seller username.');if(paymentAddress.toLowerCase()!==walletConnection.accountAddress.toLowerCase())throw new Error('Use your connected Tari wallet as the payment address.');if(!CATEGORIES.includes(category))throw new Error('Choose a category for this item.');if(!/^component_[0-9a-f]{64}$/i.test(paymentAddress))throw new Error('Paste an Ootle Tari wallet address beginning with component_.');const images=await prepareListingImages(selectedListingFiles),deliveryPublicKey=await generateDeliveryKeyPair(id),usdCents=Math.max(1,Math.round((price+shipping)*xtmRate()*100)),instructions=[componentCall(MARKET_COMPONENT_ADDRESS,'create_listing',[literal(cborText(name)),literal(cborHead(0,usdCents)),literal(cborHead(0,atomicTari(price))),literal(cborHead(0,shipping>0?atomicTari(shipping):0)),literal(cborAddress(paymentAddress,128)),literal(cborText(deliveryPublicKey)),literal(cborHead(0,stock)),literal(cborText(sellerUsername))])];button.textContent='Waiting for wallet…';const receipt=await submitInstructions(instructions,`Publish as @${sellerUsername}: ${name} for ${xtm(price)} plus ${xtm(shipping)} shipping`),chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('The listing transaction finalized, but its listing ID could not be read.');const listing={id,chainId,marketComponent:MARKET_COMPONENT_ADDRESS,name,description,price,shipping,stock,paymentAddress,deliveryPublicKey,category,images,image:images[0]||'',alt:name,glow:'rgba(104,240,197,.2)'};listings.unshift(listing);selectedSeller=null;selectedCategory='All';currentMarketPage=1;if(!saveListings()){listings.shift();return}form.reset();selectedListingFiles=[];renderListingPreviews();dialog.close();await refreshTrustScores();render();toast(`Listing published with ${images.length} photo${images.length===1?'':'s'}`)}catch(problem){errorBox.textContent=problem.message||'Could not publish this listing.'}finally{button.disabled=false;button.textContent='Publish listing'}};
     $('#sellerUsername').oninput=updateUsernameStatus;
     showLegalNotice();render();renderWalletState();setPage(pageFromHash(),false);refreshRates();refreshTrustScores();setInterval(refreshRates,60000);restoreWalletSession();
     const modelContext=document.modelContext;

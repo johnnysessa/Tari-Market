@@ -8,23 +8,27 @@ Updated September 15, 2026. Current contract source: **v0.11.0**.
 
 ## Current status
 
-The updated website is published. The v0.11.0 contract is written, tested at the unit level, and compiled, but **has not been published or instantiated on Ootle**. Updating the website does not activate new blockchain behavior.
+The v0.11.0 template is published and its marketplace component is instantiated on **Esmeralda testnet**. The website is open for user-authorized test transactions, with visible testnet labeling. Use test funds and test listings only. This is not production readiness or a completed end-to-end audit.
 
-New purchases and listings remain disabled by the readiness flags in `dist/assets/app.js`. Seller usernames, the purchase-based seller claim window, admin delegation, updated review behavior, and two-party-only escrow require the appropriate new component to be activated. Existing orders remain governed by their original deployed component. Live deployed bytecode and balances were not independently verified during the latest security review because indexer access returned HTTP 403.
+The live indexer returned `verified: true` for the expected template, native `OwnerRule::None`, owner signing key, XTM resource, platform address, and 15-field component state. Every submission rechecks this configuration. Wallet signing, purchases, refunds, seller claims, and admin flows still need live user testing. Previous components are retained for existing orders; older listings must be recreated for new purchases.
 
-The **Current availability** notice was removed from the disputes guide as requested. Removing that notice did not enable payments or alter contract permissions.
+Current component: `component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c`.
+
+Template: `template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2`.
+
+Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f`.
 
 ## Latest website updates
 
 The website includes the following recent changes:
 
-- Sellers choose a unique wallet-linked username in the listing form. Registration becomes available when the v0.11.0 component is activated.
+- Sellers choose a unique wallet-linked username in the listing form. Registration is available during Esmeralda testing.
 - The buy page shows **Seller claim window — 14 days after recorded purchase**. Checkout terms, the escrow guide, dispute timing guidance, and automatic-review explanations use the same purchase-based rule.
 - The top-left **XTM Market** button opens the Market page.
-- The bottom of the Market page offers **8, 16, 24, 32, or 64 items per page**, remembers the selection in this browser, and returns to page one when changed.
+- The bottom of the Market page offers **8, 16, 24, 32, 64, or 128 items per page**, remembers the selection in this browser, and returns to page one when changed.
 - The README and pending deployment metadata identify the compiled **v0.11.0** contract as the next Ootle publication target.
 
-The new timeout is measured as **1,008 consensus epochs**, approximately 14 days, rather than an exact wall-clock deadline. An undisputed order can become eligible before shipping or delivery is recorded. The seller must submit a claim; payment does not release automatically when the deadline passes. This rule applies after the new component is activated, while existing orders retain their original contract rules.
+The new timeout is measured as **1,008 consensus epochs**, approximately 14 days, rather than an exact wall-clock deadline. An undisputed order can become eligible before shipping or delivery is recorded. The seller must submit a claim; payment does not release automatically when the deadline passes. This rule applies to the new testnet component, while existing orders retain their original contract rules.
 
 ## Website pages and navigation
 
@@ -50,7 +54,7 @@ Admin navigation is an interface convenience; the contract's signer checks enfor
 
 - Fixed item and shipping prices in XTM; USD values are a live reference, not the settlement currency.
 - Real community listings appear first. Each added community listing reduces the sample-catalog slots until the examples are displaced.
-- An **Items per page** selector below the listings offers 8, 16, 24, 32, or 64 items. The default is 8; the choice is remembered in this browser. Changing it resets pagination to page one. Numbered pages and previous/next controls use the selected size; with the default of 8, a seventeenth displayed item starts page three.
+- An **Items per page** selector below the listings offers 8, 16, 24, 32, 64, or 128 items. The default is 8; the choice is remembered in this browser. Changing it resets pagination to page one. Numbered pages and previous/next controls appear only when available listings exceed the selected size. Selecting 128 shows a second page when there are 129 available listings. Page controls use the selected size; with the default of 8, a seventeenth displayed item starts page three.
 - Category filters, a category directory, seller profiles, and a seller's other-items view.
 - Up to eight JPG, PNG, or WebP photos per listing, with browser resizing, removable previews, a cover photo, and gallery controls.
 - Listing form includes title/description, category, item price, shipping, stock, and seller account address.
@@ -71,7 +75,7 @@ Sellers choose a username in **List an item**. The first successful listing tran
 - Listing cards, product details, and seller profiles display verified `@username` values. If the registry cannot be read, the website falls back to the wallet address and does not trust a browser-saved username.
 - Uniqueness is scoped to this marketplace component, not all of Tari. Accounts sharing a signing key share a username; key recovery, key rotation, and cross-component username migration are not implemented.
 
-The contract appends `seller_usernames` and `username_owners` to state and adds `seller_username` as the final `create_listing` argument. `SELLER_USERNAMES_READY` stays false until the new contract is published, instantiated, and verified. Existing deployed listings and orders are unchanged.
+The contract appends `seller_usernames` and `username_owners` to state and adds `seller_username` as the final `create_listing` argument. `SELLER_USERNAMES_READY` is enabled for Esmeralda testing. Existing deployed listings and orders are unchanged.
 
 ## Checkout and delivery privacy
 
@@ -120,6 +124,8 @@ Separate fee collection cannot block escrow settlement and is not guaranteed if 
 
 ## Refunds and disputes
 
+Both the disputes guide and the buyer case page have visible **Request refund** and **Submit dispute** buttons. Buyers connect their purchasing wallet, choose a verified eligible order, review the request, and submit it through their wallet. The order picker explains disconnected, loading, verification-error, and no-eligible-order states.
+
 The buyer-facing page shows eligible unsettled orders, pending cases, and available outcomes. **Request refund** and **Open dispute** both open an on-chain payment dispute for admin review; neither guarantees a refund. Admins choose a full buyer refund or seller payment, with wallet approval required for the decision.
 
 The app refreshes status from allowed marketplace components and disables actions when an order cannot be verified. It does not currently support payment-dispute evidence uploads, a written payment-case submission, a support inbox, partial refunds, return-label handling, automatic appeals, or a guaranteed decision deadline. A settled order cannot be reopened through this contract's dispute flow.
@@ -156,7 +162,7 @@ Admins can appoint or revoke other admins. The original owner is not a removable
 
 ## Wallet integration and security changes
 
-- Compatible `window.tari` providers and WalletConnect pairing with Tari Asset Vault.
+- Both Tari Universe/browser wallets and WalletConnect pairing with Tari Asset Vault are supported. The connection dialog offers both methods. In a standalone browser, the unavailable Universe bridge is skipped and WalletConnect is selected; inside Universe, the embedded provider is selected, with WalletConnect also available. Unavailable providers are skipped during session restoration. Network detection failures do not default to Esmeralda.
 - A locally bundled Tari Universe bridge restricted to the known `https://universe.tari.mw` parent origin and frame source, with request timeouts.
 - WalletConnect 2.23.7 and its seven-module static import graph vendored locally, with provenance hashes in `security/vendor-manifest.json`.
 - Esmeralda network-byte check, fresh wallet-account verification, account/session/provider checks, transaction and purchase locks, and tracking of unconfirmed transaction IDs before retry.
@@ -226,9 +232,9 @@ cargo build --release --target wasm32-unknown-unknown --manifest-path contracts/
 
 Unit and source checks do not simulate a full Ootle transaction or prove that a deployed component matches this repository.
 
-## Ootle activation
+## Ootle activation checklist (remaining integration checks apply)
 
-The next publication target is **v0.11.0**, which incorporates the earlier review and admin work. Historical upgrade instructions are not the current rollout plan.
+**v0.11.0 is published and instantiated.** The checklist below documents rollout verification; transaction scenarios remain to be tested. Historical upgrade instructions are not the current rollout plan.
 
 Artifact: `contracts/artifacts/XTM_Market_SellerUsernames_v0.11.0_Esmeralda.wasm`
 
@@ -240,7 +246,7 @@ SHA-256: `689b7224e5f571bb3b6a71fa83f31558e1c6d8637ed17a915974c2c09299d65d`
 4. Update the verified component configuration in `dist/assets/app.js` and deployment records. Verify duplicate username rejection across different wallets, same-wallet reuse, concurrent reservations, and rollback of a failed listing. Enable `ITEM_PRICE_FEE_READY`, `SECURITY_UPGRADE_READY`, and `SELLER_USERNAMES_READY` only after the matching tests and configuration checks succeed. Refresh script integrity hashes and publish the website update.
 5. Preserve the old component addresses for their existing orders. Do not change an order's component ID or silently move outstanding escrow.
 
-The currently configured component reference is `component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9`; its recorded template is `template_19555399f19e664fe251a34b7ef1f470369a54ae33a9d5b1f4dfacaa7c12b3ac`. These are historical/configured references, not fresh verification of the live deployment. `esmeralda.json` also retains older version labels and separate pending-upgrade records; consult its `pending_seller_username_upgrade` section for the v0.11.0 target.
+The current component and template are listed in Current status above and in `contracts/deployment/esmeralda.json`. Historical pending-upgrade entries remain as provenance; their older artifacts are not the active testnet target.
 
 ## Update history
 
@@ -252,7 +258,7 @@ The currently configured component reference is `component_2f28005895aac7dfa3efe
 | v0.6 | Item-price-only 3% fee; historical release-time deduction subsequently superseded in v0.9.0 |
 | v0.7 | Automatic five-star **Sale Satisfactory** feedback on eligible undisputed timeout claims |
 | Brand navigation | Top-left XTM Market button returns to the Market page with keyboard support |
-| Marketplace browsing | Community listings first, samples displaced as listings grow, category/seller browsing, and adjustable 8/16/24/32/64-item pagination |
+| Marketplace browsing | Community listings first, samples displaced as listings grow, category/seller browsing, and adjustable 8/16/24/32/64/128-item pagination |
 | Purchase screen | Buy action in product details, dedicated checkout, optional name/Resident, and structured shipping inputs |
 | Explanatory pages | Ootle escrow guide, dispute/refund guide, and 3% fee maintenance/Tari-development explanation |
 | Escrow wording | Consistent funding-at-purchase wording across checkout, orders, and guides |

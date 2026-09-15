@@ -50,4 +50,13 @@ usernameState[14].shop_one='c'.repeat(64);usernameContext.refreshUsernameRegistr
 check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:usernameAddress}),usernameAddress));
 usernameContext.refreshUsernameRegistry(null);
 check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:usernameAddress}),usernameAddress));
-bridgeTest().then(()=>console.log(`${checks} security regression checks passed.`)).catch(error=>{console.error(error);process.exitCode=1});
+async function walletRoutingTest(){
+  for(const [available,choice,expected] of [[false,'walletconnect','walletconnect'],[true,'provider','provider'],[true,'walletconnect','walletconnect']]){
+    let route='',pairing='';const nodes={};const provider={isAvailable:available,isEmbedded:available,info:{rdns:'mw.tari.universe'},request:async()=>{assert(available);route='provider';return['account']}};
+    const context=vm.createContext({window:{tari:provider,tariUniverse:provider},walletConnection:{connected:false},$:id=>nodes[id]??(nodes[id]={value:choice,classList:{add(){},remove(){}}}),getWalletClient:async()=>({session:{getAll:()=>[]},connect:async()=>{route='walletconnect';return{uri:'wc:test',approval:async()=>({})}}}),WALLETCONNECT_CHAIN:'tari:38',showPairingUri:async uri=>{pairing=uri},finishWalletSession:async()=>{},finishWindowTari:async()=>{},renderWalletConnectionChoice:()=>{}});
+    vm.runInContext(line('hasAvailableTariProvider')+'\n'+app.slice(app.indexOf('    async function connectWallet('),app.indexOf('    async function disconnectWallet(')),context);
+    await context.connectWallet({preventDefault(){}});assert.equal(route,expected);assert.equal(pairing,expected==='walletconnect'?'wc:test':'');checks+=2;
+  }
+  const context=vm.createContext({window:{tari:{request(){}}}});vm.runInContext(line('hasAvailableTariProvider'),context);check(()=>assert.equal(context.hasAvailableTariProvider(),true));context.window.tari.isAvailable=false;check(()=>assert.equal(context.hasAvailableTariProvider(),false));
+}
+Promise.all([bridgeTest(),walletRoutingTest()]).then(()=>console.log(`${checks} security regression checks passed.`)).catch(error=>{console.error(error);process.exitCode=1});
