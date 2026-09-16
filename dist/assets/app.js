@@ -49,7 +49,7 @@
     let roleRefreshSequence=0;
     let sellerTrustScores=new Map(),sellerReviews=[],trustRatingsReady=false,reviewCommentsReady=false;
     const $=s=>document.querySelector(s);
-    const pageIds={fee:'feeView',checkout:'checkoutView',cases:'paymentCasesView',disputes:'disputesView',escrow:'escrowView',categories:'categoriesView',market:'marketView',recent:'recentView',received:'receivedView',moderation:'moderationView'};
+    const pageIds={myitems:'myItemsView',fee:'feeView',checkout:'checkoutView',cases:'paymentCasesView',disputes:'disputesView',escrow:'escrowView',categories:'categoriesView',market:'marketView',recent:'recentView',received:'receivedView',moderation:'moderationView'};
     const MARKET_OWNER_ACCOUNT='component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c';
     let adminRoles=new Map(),adminRolesReady=false,adminRolesCheckedAt=0,adminRoleBusy=false;
     function isMarketplaceOwner(){return walletConnection.connected&&String(walletConnection.accountAddress||'').toLowerCase()===MARKET_OWNER_ACCOUNT}
@@ -74,26 +74,27 @@
         await refreshTrustScores();if(method==='grant_admin')$('#adminRoleForm').reset();toast('Admin transaction completed. Permissions refreshed.');
       }catch(error){toast(error.message||'Admin update was not approved')}finally{adminRoleBusy=false;renderAdminManagement()}
     }
-    function pageFromHash(){return location.hash==='#marketplace-fee'?'fee':location.hash==='#checkout'?'checkout':location.hash==='#refunds-disputes'?'cases':location.hash==='#disputes-refunds'?'disputes':location.hash==='#ootle-escrow'?'escrow':location.hash==='#categories'?'categories':location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':location.hash==='#moderation'?'moderation':'market'}
+    function pageFromHash(){return location.hash==='#my-items'?'myitems':location.hash==='#marketplace-fee'?'fee':location.hash==='#checkout'?'checkout':location.hash==='#refunds-disputes'?'cases':location.hash==='#disputes-refunds'?'disputes':location.hash==='#ootle-escrow'?'escrow':location.hash==='#categories'?'categories':location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':location.hash==='#moderation'?'moderation':'market'}
     function setPage(page,updateHash=true){
       const requested=page==='checkout'&&!selected?'market':pageIds[page]?page:'market',next=requested==='moderation'&&!isMarketplaceAdmin()?'market':requested;
       if(requested==='moderation'&&next==='market')history.replaceState(null,'',location.pathname+location.search);
       for(const [name,id] of Object.entries(pageIds))document.getElementById(id).hidden=name!==next;
       document.querySelectorAll('[data-page]').forEach(button=>{const active=button.dataset.page===next;button.classList.toggle('active',active);active?button.setAttribute('aria-current','page'):button.removeAttribute('aria-current')});
-      if(updateHash){const hash=next==='fee'?'#marketplace-fee':next==='checkout'?'#checkout':next==='cases'?'#refunds-disputes':next==='disputes'?'#disputes-refunds':next==='escrow'?'#ootle-escrow':next==='categories'?'#categories':next==='market'?'':next==='recent'?'#recent-orders':next==='received'?'#orders-received':'#moderation';history.replaceState(null,'',location.pathname+location.search+hash)}
+      if(updateHash){const hash=next==='myitems'?'#my-items':next==='fee'?'#marketplace-fee':next==='checkout'?'#checkout':next==='cases'?'#refunds-disputes':next==='disputes'?'#disputes-refunds':next==='escrow'?'#ootle-escrow':next==='categories'?'#categories':next==='market'?'':next==='recent'?'#recent-orders':next==='received'?'#orders-received':'#moderation';history.replaceState(null,'',location.pathname+location.search+hash)}
       $('#'+(next==='checkout'?'checkoutPaymentHost':'marketCheckoutHost')).appendChild(document.querySelector('.checkout'));
       if(next==='cases'){renderPaymentCases();refreshPaymentCases()}
+      if(next==='myitems')refreshMyItems();
       if(next==='recent')renderOrders();
       if(next==='received'){renderSellerOrders();refreshPaymentCases().then(renderSellerOrders)}
       if(next==='moderation'){renderModeration();renderPaymentCases();refreshPaymentCases();refreshTrustScores()}
       scrollTo({top:0,behavior:'smooth'})
     }
-    // Keep the active component address for existing-order actions until the v0.6
-    // template is instantiated, then replace the address and set this flag true.
-    const MARKET_COMPONENT_ADDRESS='component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c';
+    // New listings use v0.12; existing orders retain their original component.
+    const MARKET_COMPONENT_ADDRESS='component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938';
+    const PREVIOUS_MARKET_COMPONENT='component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c';
     const ITEM_PRICE_FEE_READY=true;
     const SECURITY_UPGRADE_READY=true;
-    const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
+    const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,PREVIOUS_MARKET_COMPONENT,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
     const newPurchasesReady=()=>Boolean(MARKET_COMPONENT_ADDRESS)&&ITEM_PRICE_FEE_READY&&SECURITY_UPGRADE_READY&&SELLER_USERNAMES_READY;
     const MAX_TRANSACTION_FEE=5000;
     const ESMERALDA_NETWORK_BYTE=38;
@@ -117,7 +118,7 @@
       const response=await fetch(`${INDEXER_URL}substates/${MARKET_COMPONENT_ADDRESS}?local_search_only=false`,{cache:'no-store',signal:AbortSignal.timeout(15000)});
       if(!response.ok)throw new Error('Cannot verify the Esmeralda marketplace. Try again.');
       const payload=await response.json(),component=payload?.substate?.Component,state=decodeChainValue(component?.body?.state);
-      if(payload.verified!==true||component?.header?.template_address!=='b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2'||component?.header?.owner_rule!=='None'||!Array.isArray(state)||state.length!==15||state[0]!=='resource_0101010101010101010101010101010101010101010101010101010101010101'||state[1]!==MARKET_OWNER_ACCOUNT||state[10]!=='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828')throw new Error('Marketplace configuration could not be verified. Transaction stopped.');
+      if(payload.verified!==true||component?.header?.template_address!=='ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a'||component?.header?.owner_rule!=='None'||!Array.isArray(state)||state.length!==15||state[0]!=='resource_0101010101010101010101010101010101010101010101010101010101010101'||state[1]!==MARKET_OWNER_ACCOUNT||state[10]!=='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828')throw new Error('Marketplace configuration could not be verified. Transaction stopped.');
     }
     function firstAddress(value){
       if(value&&typeof value==='object'&&value['@cbor'])return firstAddress(decodeChainValue(value));
@@ -132,12 +133,12 @@
     const SELLER_USERNAMES_READY=true;
     let sellerUsernames=new Map(),usernameOwners=new Map(),usernameListings=new Map(),usernameRegistryReady=false;
     function normalizeSellerUsername(value){const name=String(value||'').trim().toLowerCase();return /^[a-z0-9_]{3,24}$/.test(name)&&!['admin','administrator','owner','support','xtm_market','tari','ootle'].includes(name)?name:''}
-    function sellerIdentity(item){const row=usernameListings.get(String(item.chainId));return row&&row.address===String(item.paymentAddress||'').toLowerCase()?'@'+(row.name==='taritom'?'TariTom':row.name):shortAddress(item.paymentAddress||'Seller wallet pending')}
+    function sellerIdentity(item){const row=usernameListings.get(item.marketComponent+':'+item.chainId);return row&&row.address===String(item.paymentAddress||'').toLowerCase()?'@'+(row.name==='taritom'?'TariTom':row.name):shortAddress(item.paymentAddress||'Seller wallet pending')}
     function refreshUsernameRegistry(state){
       sellerUsernames=new Map();usernameOwners=new Map();usernameListings=new Map();usernameRegistryReady=false;
       if(!SELLER_USERNAMES_READY||!Array.isArray(state)||state.length!==15||!state[13]||!state[14])return;
       for(const [key,name] of Object.entries(state[13]))if(/^[0-9a-f]{64}$/.test(key)&&normalizeSellerUsername(name)===name&&state[14][name]===key){sellerUsernames.set(key,name);usernameOwners.set(name,key)}
-      for(const [id,row] of Object.entries(state[3]||{})){const raw=reviewField(row,6,'seller'),signer=typeof raw==='string'?raw.toLowerCase():Array.isArray(raw)&&raw.length===32&&raw.every(n=>Number.isInteger(n)&&n>=0&&n<=255)?raw.map(n=>n.toString(16).padStart(2,'0')).join(''):'';const name=sellerUsernames.get(signer),address=paymentAddress(reviewField(row,5,'seller_payment_address'));if(name)usernameListings.set(String(reviewField(row,0,'id')??id),{name,address})}
+      for(const [id,row] of Object.entries(state[3]||{})){const raw=reviewField(row,6,'seller'),signer=typeof raw==='string'?raw.toLowerCase():Array.isArray(raw)&&raw.length===32&&raw.every(n=>Number.isInteger(n)&&n>=0&&n<=255)?raw.map(n=>n.toString(16).padStart(2,'0')).join(''):'';const name=sellerUsernames.get(signer),address=paymentAddress(reviewField(row,5,'seller_payment_address'));if(name)usernameListings.set(MARKET_COMPONENT_ADDRESS+':'+String(reviewField(row,0,'id')??id),{name,address})}
       usernameRegistryReady=true;
     }
     function updateUsernameStatus(){
@@ -166,7 +167,8 @@
       try{
         const response=await fetch(`${INDEXER_URL}substates/${encodeURIComponent(MARKET_COMPONENT_ADDRESS)}?local_search_only=false`,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
         if(!response.ok)throw new Error();
-        const state=decodeChainValue((await response.json())?.substate?.Component?.body?.state);
+        const payload=await response.json();if(payload.verified!==true)throw new Error('Unverified marketplace');
+        const state=decodeChainValue(payload?.substate?.Component?.body?.state),legacy=await readListingMarket(PREVIOUS_MARKET_COMPONENT);
         if(sequence!==roleRefreshSequence)return;
         adminRolesReady=Array.isArray(state)&&state.length>=12&&typeof state[10]==='string'&&Boolean(state[11])&&typeof state[11]==='object';
         adminRoles=new Map(adminRolesReady?Object.entries(state[11]).filter(([address,key])=>/^component_[0-9a-f]{64}$/i.test(address)&&/^[0-9a-f]{64}$/i.test(key)).map(([address,key])=>[address.toLowerCase(),key.toLowerCase()]):[]);adminRolesCheckedAt=Date.now();
@@ -176,7 +178,7 @@
         if(ratings&&typeof ratings==='object')for(const [key,value] of Object.entries(ratings)){const address=(key.match(/component_[0-9a-f]{64}/i)||[])[0],record=readTrustValue(value);if(address&&record)next.set(address.toLowerCase(),record)}
         const nextReviews=[],reviews=reviewCommentsReady?state[7]:null;
         if(reviews&&typeof reviews==='object')for(const [key,value] of Object.entries(reviews)){const review=readReviewValue(value,key);if(review)nextReviews.push(review)}
-        refreshUsernameRegistry(state);sellerTrustScores=next;sellerReviews=nextReviews
+        refreshUsernameRegistry(state);addLegacyUsernames(legacy);syncMarketListings(state,legacy);sellerTrustScores=next;sellerReviews=nextReviews
       }catch{if(sequence!==roleRefreshSequence)return;refreshUsernameRegistry(null);adminRolesReady=false;adminRoles.clear();trustRatingsReady=false;reviewCommentsReady=false;sellerTrustScores=new Map();sellerReviews=[]}
       updateUsernameStatus();render();renderSellerTrust();renderModeration()
     }
@@ -413,7 +415,7 @@
         window.tari.request({method:'tari_getCapabilities'}).catch(()=> null)
       ]);
       if(!String(network).toLowerCase().includes('esmeralda'))throw new Error('Switch your Tari wallet to the Esmeralda network.');
-      walletConnection={...walletConnection,connected:true,transport:'window.tari',accountAddress,walletAddress:String(walletAddress||''),network:String(network),networkByte:null,account:{component_address:accountAddress},session:null,capabilities};
+      walletConnection={...walletConnection,connected:true,transport:'window.tari',accountAddress,walletAddress:String(walletAddress||''),network:String(network),networkByte:null,account:{...(accounts?.[0]&&typeof accounts[0]==='object'?accounts[0]:{}),component_address:accountAddress},session:null,capabilities};
       $('#pairingPanel').classList.remove('show');$('#walletDialog').close();await refreshTrustScores();renderWalletState();renderSellerOrders();toast('Tari wallet connected through window.tari')
     }
     async function showPairingUri(uri){
@@ -522,7 +524,7 @@
           if(outcome==='accepted'){if(identity.transport==='testnet')await (await testWalletModule()).acknowledge(transactionId);forget();return {transactionId,result}}
         }
         throw new Error('Transaction status is unconfirmed. Check your wallet before retrying; it may still complete.');
-      }finally{transactionBusy=false}
+      }finally{transactionBusy=false;walletSummary.updated=0;renderConnectedWallet()}
     }
     function returnedListingId(result){
       let executionResults=null;
@@ -531,6 +533,155 @@
       const value=executionResults[executionResults.length-1]?.indexed?.value??executionResults[executionResults.length-1]?.value;
       const number=typeof value==='number'?value:typeof value==='string'&&/^\d+$/.test(value)?Number(value):null;
       return Number.isSafeInteger(number)&&number>0?number:null
+    }
+    let walletSummary={key:'',status:'idle',amount:null,owner:'',updated:0};
+    function connectedWalletName(){
+      const address=String(walletConnection.accountAddress||'').toLowerCase();
+      const registered=[...usernameListings.values()].find(row=>row.address===address)?.name||sellerUsernames.get(walletSummary.owner);
+      if(registered)return registered==='taritom'?'TariTom':registered;
+      const name=walletConnection.account?.name||walletConnection.account?.account_name;
+      if(typeof name==='string'&&name.trim())return name.trim().slice(0,64);
+      return {testnet:'Browser test wallet',local:'Asset Vault wallet','window.tari':'Tari wallet',walletconnect:'Tari wallet'}[walletConnection.transport]||'Tari wallet';
+    }
+    function renderConnectedWallet(){
+      const button=$('#walletButton');
+      if(!walletConnection.connected){walletSummary={key:'',status:'idle',amount:null,owner:'',updated:0};button.title='';return;}
+      const key=walletConnection.transport+':'+walletConnection.accountAddress;
+      if(walletSummary.key!==key)walletSummary={key,status:'idle',amount:null,owner:'',updated:0};
+      const name=connectedWalletName(),balance=walletSummary.status==='ready'?new Intl.NumberFormat(undefined,{maximumFractionDigits:6}).format(walletSummary.amount)+' tTari available':walletSummary.status==='error'?'Balance unavailable':'Loading balance…';
+      button.replaceChildren();
+      const title=document.createElement('span'),amount=document.createElement('span');
+      title.className='connected-wallet-name';title.textContent=name;
+      amount.className='connected-wallet-balance';amount.textContent=balance;button.append(title,amount);
+      button.title='Public spendable balance; excludes shielded funds and escrow. Account: '+walletConnection.accountAddress;
+      $('#walletCheckoutStatus').textContent=name+' · '+balance;
+      if(walletSummary.status!=='loading'&&Date.now()-walletSummary.updated>=25000)refreshConnectedWallet();
+    }
+    async function refreshConnectedWallet(){
+      if(!walletConnection.connected)return;
+      const snapshot=walletSummary,account=walletConnection.accountAddress;
+      if(snapshot.status==='loading')return;
+      snapshot.status='loading';
+      async function read(id){
+        const response=await fetch(INDEXER_URL+'substates/'+encodeURIComponent(id)+'?local_search_only=false',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+        if(!response.ok)throw new Error('Balance unavailable');
+        const payload=await response.json();return decodeChainValue(payload.substate||payload.value?.substate);
+      }
+      try{
+        const component=(await read(account))?.Component;
+        if(!component)throw new Error('Account unavailable');
+        const owner=component.header?.owner_rule?.ByPublicKey;
+        const ids=new Set();
+        (function visit(value){if(typeof value==='string'&&/^vault_[0-9a-f]{64}$/.test(value))ids.add(value);else if(value&&typeof value==='object')Object.values(value).forEach(visit)})(component.body?.state);
+        let total=0n;
+        for(const id of ids){
+          const container=(await read(id))?.Vault?.resource_container;
+          const funds=container?.Stealth||container?.Confidential||container?.Fungible;
+          if(!funds||funds.address!=='resource_'+'01'.repeat(32))continue;
+          const raw=funds.revealed_amount??funds.amount;
+          if(!/^[0-9]+$/.test(String(raw))||(typeof raw==='number'&&!Number.isSafeInteger(raw)))throw new Error('Invalid balance');
+          total+=BigInt(raw);
+        }
+        if(total>BigInt(Number.MAX_SAFE_INTEGER))throw new Error('Balance exceeds display precision');
+        if(walletSummary!==snapshot||!walletConnection.connected)return;
+        snapshot.owner=typeof owner==='string'?owner:'';snapshot.amount=Number(total)/1e6;snapshot.status='ready';
+      }catch{if(walletSummary!==snapshot)return;snapshot.amount=null;snapshot.status='error';}
+      if(walletSummary===snapshot){snapshot.updated=Date.now();renderConnectedWallet();}
+    }
+    // Enable only after publishing, validating, and configuring the seller-management contract.
+    const LISTING_MANAGEMENT_READY=true;
+    let myItems=[],myItemsSequence=0,editingItem=null,myItemsBusy=false;
+    async function readListingMarket(component){
+      const response=await fetch(INDEXER_URL+'substates/'+component+'?local_search_only=false',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw new Error('Could not load listings. Try Refresh items.');
+      const data=await response.json(),c=data?.substate?.Component,state=decodeChainValue(c?.body?.state);
+      const template=component===MARKET_COMPONENT_ADDRESS?'ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a':'b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2';
+      if(data.verified!==true||c?.header?.template_address!==template||c?.header?.owner_rule!=='None'||!Array.isArray(state)||state.length!==15||state[10]!=='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828'||state[1]!==MARKET_OWNER_ACCOUNT)throw new Error('Marketplace identity could not be verified.');
+      return state;
+    }
+    function listingRows(state,component){return Object.values(state[3]).map(row=>({id:Number(row[0]),component,name:String(row[1]),usdCents:Number(row[2]),price:Number(row[3])/1e6,shipping:Number(row[4])/1e6,paymentAddress:paymentAddress(row[5]),signer:String(row[6]),deliveryPublicKey:String(row[7]),stock:Number(row[8]),active:row[9]===true,username:state[13][row[6]]||''}));}
+    function sameListingOrigin(a,b){return a.signer===b.signer&&a.paymentAddress===b.paymentAddress&&a.deliveryPublicKey===b.deliveryPublicKey;}
+    function addLegacyUsernames(state){
+      for(const row of listingRows(state,PREVIOUS_MARKET_COMPONENT))if(normalizeSellerUsername(row.username)&&state[14][row.username]===row.signer)usernameListings.set(PREVIOUS_MARKET_COMPONENT+':'+row.id,{name:row.username,address:row.paymentAddress});
+    }
+    function syncMarketListings(state,legacy){
+      const current=listingRows(state,MARKET_COMPONENT_ADDRESS),previous=listingRows(legacy,PREVIOUS_MARKET_COMPONENT);
+      for(const row of [...previous,...current]){
+        const replacement=row.component===PREVIOUS_MARKET_COMPONENT?current.find(next=>sameListingOrigin(row,next)):null;
+        let local=listings.find(item=>item.marketComponent===row.component&&item.chainId===row.id);
+        if(replacement){if(local){local.previousListing={component:row.component,id:row.id};local.marketComponent=replacement.component;local.chainId=replacement.id;}continue;}
+        if(!local){if(!row.active)continue;local={id:(row.component===MARKET_COMPONENT_ADDRESS?8000000000000:7000000000000)+row.id,chainId:row.id,marketComponent:row.component,description:'',category:'Other',images:[],image:''};listings.push(local);}
+        Object.assign(local,{name:row.name,price:row.price,shipping:row.shipping,stock:row.active?row.stock:0,paymentAddress:row.paymentAddress,deliveryPublicKey:row.deliveryPublicKey,deleted:!row.active});
+      }
+      saveListings();
+    }
+    async function refreshMyItems(){
+      const seq=++myItemsSequence,box=$('#myItemsList'),account=walletConnection.accountAddress;
+      if(!walletConnection.connected){myItems=[];box.innerHTML='<div class="none">Connect your wallet to see your items.</div>';return;}
+      box.textContent='Loading your listings…';
+      try{
+        const [state,legacy]=await Promise.all([readListingMarket(MARKET_COMPONENT_ADDRESS),readListingMarket(PREVIOUS_MARKET_COMPONENT)]);
+        if(seq!==myItemsSequence||!walletConnection.connected||walletConnection.accountAddress!==account)return;
+        const current=listingRows(state,MARKET_COMPONENT_ADDRESS),previous=listingRows(legacy,PREVIOUS_MARKET_COMPONENT).filter(row=>!current.some(next=>sameListingOrigin(row,next)));
+        myItems=[...current,...previous].filter(row=>row.paymentAddress===account.toLowerCase()&&row.active);
+        syncMarketListings(state,legacy);refreshUsernameRegistry(state);addLegacyUsernames(legacy);render();
+        $('#myItemsAvailability').hidden=true;
+        box.innerHTML=myItems.length?myItems.map(item=>`<article class="order"><div><strong>${escapeHtml(item.name)}</strong><p>${xtm(item.price)} · Shipping ${xtm(item.shipping)} · ${item.stock} available</p>${item.component===PREVIOUS_MARKET_COMPONENT?'<p>Relist once to enable editing and deletion. Your wallet approval is required.</p>':''}</div><div class="order-actions">${item.component===MARKET_COMPONENT_ADDRESS?`<button class="button small" data-edit-item="${item.id}">Edit</button><button class="button small danger" data-delete-item="${item.id}">Delete</button>`:`<button class="button small" data-relist-item="${item.id}">Relist to enable editing</button>`}</div></article>`).join(''):'<div class="none">You have no active listings on this marketplace.</div>';
+        box.querySelectorAll('[data-edit-item]').forEach(button=>button.onclick=()=>openItemEditor(Number(button.dataset.editItem)));
+        box.querySelectorAll('[data-delete-item]').forEach(button=>button.onclick=()=>deleteMyItem(Number(button.dataset.deleteItem)));
+        box.querySelectorAll('[data-relist-item]').forEach(button=>button.onclick=()=>relistMyItem(Number(button.dataset.relistItem)));
+      }catch(error){if(seq===myItemsSequence)box.textContent=error.message||'Could not load your listings.';}
+    }
+    async function relistMyItem(id){
+      if(myItemsBusy||!walletConnection.connected)return;
+      const account=walletConnection.accountAddress;myItemsBusy=true;
+      try{
+        const [legacy,current]=await Promise.all([readListingMarket(PREVIOUS_MARKET_COMPONENT),readListingMarket(MARKET_COMPONENT_ADDRESS)]);
+        const item=listingRows(legacy,PREVIOUS_MARKET_COMPONENT).find(row=>row.id===id&&row.paymentAddress===account.toLowerCase()&&row.active);
+        if(!item||item.stock<1)throw new Error('This listing has no remaining inventory to relist.');
+        if(listingRows(current,MARKET_COMPONENT_ADDRESS).some(row=>sameListingOrigin(row,item)))throw new Error('This item has already been relisted. Refresh items.');
+        const response=await fetch(INDEXER_URL+'substates/'+account+'?local_search_only=false',{cache:'no-store',signal:AbortSignal.timeout(15000)}),data=await response.json();
+        if(data.verified!==true||decodeChainValue(data.substate?.Component?.header?.owner_rule?.ByPublicKey)!==item.signer)throw new Error('Use the original seller wallet to relist this item.');
+        if(!normalizeSellerUsername(item.username)||(current[14][item.username]&&current[14][item.username]!==item.signer))throw new Error('The original username cannot be reserved. Contact the marketplace owner.');
+        const local=listings.find(row=>row.marketComponent===PREVIOUS_MARKET_COMPONENT&&row.chainId===id);
+        if(!local||!await loadDeliveryPrivateKey(local.id))throw new Error('Relist from the browser where you created this item so its shipping decryption key is available.');
+        if(!window.confirm('Relist '+item.name+' with '+item.stock+' available? The old contract cannot remove its listing and remains callable directly. Check inventory for old-contract sales. Existing orders stay unchanged.'))return;
+        if(!walletConnection.connected||walletConnection.accountAddress!==account)throw new Error('Wallet changed. Try again.');
+        const receipt=await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'create_listing',[literal(cborText(item.name)),literal(cborHead(0,item.usdCents)),literal(cborHead(0,atomicTari(item.price))),literal(cborHead(0,item.shipping?atomicTari(item.shipping):0)),literal(cborAddress(item.paymentAddress,128)),literal(cborText(item.deliveryPublicKey)),literal(cborHead(0,item.stock)),literal(cborText(item.username))])],`Relist ${item.name} as @${item.username}. Existing escrow stays on the original marketplace.`);
+        const chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('Transaction finalized. Refresh items to recover the new listing before retrying.');
+        local.previousListing={component:PREVIOUS_MARKET_COMPONENT,id};local.chainId=chainId;local.marketComponent=MARKET_COMPONENT_ADDRESS;saveListings();
+        await refreshMyItems();await refreshTrustScores();toast('Item relisted. Editing and deletion are now available.');
+      }catch(error){toast(error.message);}finally{myItemsBusy=false;}
+    }
+    function openItemEditor(id){
+      if(!LISTING_MANAGEMENT_READY||myItemsBusy||!walletConnection.connected)return;
+      const item=myItems.find(row=>row.id===id&&row.component===MARKET_COMPONENT_ADDRESS);if(!item)return;
+      editingItem={...item,account:walletConnection.accountAddress};
+      const form=$('#editItemForm');for(const [key,value] of Object.entries({title:item.name,price:item.price,shipping:item.shipping,stock:item.stock}))form.elements[key].value=value;
+      $('#editItemError').textContent='';$('#editItemDialog').showModal();
+    }
+    async function saveMyItem(event){
+      event.preventDefault();if(!LISTING_MANAGEMENT_READY||myItemsBusy||!editingItem)return;
+      const item=editingItem,form=$('#editItemForm'),data=new FormData(form),name=String(data.get('title')).trim(),price=Number(data.get('price')),shipping=Number(data.get('shipping')),stock=Number(data.get('stock'));
+      if(!walletConnection.connected||item.account!==walletConnection.accountAddress){$('#editItemError').textContent='Reconnect the wallet that owns this listing.';return;}
+      myItemsBusy=true;$('#saveItemChanges').disabled=true;
+      try{
+        if(!name||new TextEncoder().encode(name).length>200||!Number.isSafeInteger(stock)||stock<0||!Number.isFinite(shipping)||shipping<0)throw new Error('Check the title, shipping, and quantity.');
+        const args=[literal(cborHead(0,item.id)),literal(cborText(name)),literal(cborHead(0,Math.max(1,Math.round((price+shipping)*xtmRate()*100)))),literal(cborHead(0,atomicTari(price))),literal(cborHead(0,shipping?atomicTari(shipping):0)),literal(cborHead(0,stock))];
+        await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'update_listing',args)],`Save changes to ${name}: ${xtm(price)}, shipping ${xtm(shipping)}, quantity ${stock}`);
+        for(const row of listings)if(row.marketComponent===MARKET_COMPONENT_ADDRESS&&row.chainId===item.id)Object.assign(row,{name,price,shipping,stock});
+        saveListings();$('#editItemDialog').close();editingItem=null;render();await refreshMyItems();toast('Listing updated');
+      }catch(error){$('#editItemError').textContent=error.message;}finally{myItemsBusy=false;$('#saveItemChanges').disabled=false;}
+    }
+    async function deleteMyItem(id){
+      if(!LISTING_MANAGEMENT_READY||myItemsBusy||!walletConnection.connected)return;
+      const item=myItems.find(row=>row.id===id&&row.component===MARKET_COMPONENT_ADDRESS);if(!item)return;
+      if(!window.confirm(`Delete ${item.name}? New purchases will stop. Existing orders and escrow remain unchanged.`))return;
+      myItemsBusy=true;
+      try{
+        await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'cancel_listing',[literal(cborHead(0,id))])],`Delete listing: ${item.name}`);
+        listings=listings.filter(row=>row.marketComponent!==MARKET_COMPONENT_ADDRESS||row.chainId!==id);saveListings();render();await refreshMyItems();toast('Listing deleted');
+      }catch(error){toast(error.message);}finally{myItemsBusy=false;}
     }
     function renderWalletState(){
       renderAdminManagement();
@@ -545,6 +696,8 @@
       $('#walletState').classList.toggle('connected',connected);
       $('#walletDot').classList.toggle('ready',connected);
       $('#walletCheckoutStatus').textContent=connected?`Connected · ${shortAddress(walletConnection.accountAddress)}`:'Tari wallet not connected';
+      renderConnectedWallet();
+      if(pageFromHash()==='myitems')refreshMyItems();
       if(selected){
         const blocked=purchaseBlockReason(selected);
         $('#orderButton').disabled=Boolean(blocked);
@@ -701,7 +854,7 @@
     }
     function cycleListingPhoto(itemId,direction){const gallery=document.querySelector(`[data-photo-gallery="${itemId}"]`);if(!gallery)return;let sources=[];try{sources=JSON.parse(gallery.dataset.photoSources||'[]')}catch{}if(sources.length<2)return;const next=(Number(gallery.dataset.photoIndex||0)+direction+sources.length)%sources.length,img=gallery.querySelector('img'),item=listings.find(candidate=>candidate.id===itemId);gallery.dataset.photoIndex=next;img.src=sources[next];img.alt=`${item?.alt||item?.name||'Listing'} — photo ${next+1} of ${sources.length}`;const count=gallery.querySelector('[data-photo-count]');if(count)count.textContent=`${next+1} / ${sources.length}`}
     function openProductDetail(itemId){const item=listings.find(candidate=>candidate.id===itemId);if(!item)return;const v=values(item),catalogPhoto=catalogImages[item.id],photos=listingImages(item),fallback=safeImageSrc(catalogPhoto?.src),photoList=photos.length?photos:(fallback?[fallback]:[]),alt=item.alt||catalogPhoto?.alt||item.name,sample=item.sample?sampleTrustFor(item.id):null,trust=sample?{score:sample.score,count:sample.count}:trustRecord(item.paymentAddress),score=sample?`${trust.score.toFixed(1)} ★ · ${trust.count} verified ${trust.count===1?'review':'reviews'}`:trust?.ratingCount?`${(trust.totalStars/trust.ratingCount).toFixed(1)} ★ · ${trust.ratingCount} verified ${trust.ratingCount===1?'review':'reviews'}`:'New seller',seller=item.sample?sampleSellerName(item.id):sellerIdentity(item),purchasable=Boolean(item.chainId&&item.deliveryPublicKey&&item.paymentAddress&&newPurchasesReady());const gallery=photoList.length?`<div class="detail-main-photo"><img id="productDetailImage" src="${photoList[0]}" alt="${escapeHtml(alt)} — large photo 1 of ${photoList.length}"></div>${photoList.length>1?`<div class="detail-thumbnails" aria-label="Product photos">${photoList.map((src,index)=>`<button class="detail-thumb ${index===0?'active':''}" type="button" data-detail-photo="${index}" aria-label="View photo ${index+1}"><img src="${src}" alt=""></button>`).join('')}</div>`:''}`:'<div class="detail-main-photo"><div class="product-placeholder">No image added</div></div>';$('#productDetailContent').innerHTML=`<div class="product-detail"><section>${gallery}</section><section class="detail-copy"><span class="item-category">${escapeHtml(listingCategory(item))}</span><h2 id="productDetailTitle">${escapeHtml(item.name)}</h2><p class="detail-description">${escapeHtml(item.description)}</p><div class="detail-pricing"><div class="row"><span>Item price</span><strong>${xtm(v.itemXtm)}</strong></div><div class="row"><span>Shipping</span><strong>${xtm(v.shippingXtm)}</strong></div><div class="row"><span>Total</span><strong>${xtm(v.totalXtm)}</strong></div><div class="row"><span>USD reference</span><strong>${money(v.usd)}</strong></div><div class="row"><span>Available</span><strong>${item.stock} in stock</strong></div><div class="row"><span>Protection</span><strong>Escrow funded at purchase</strong></div></div><div class="seller-summary"><h3>About the seller</h3><div class="seller-summary-score">${escapeHtml(score)}</div><div class="seller-summary-wallet">${escapeHtml(seller)}</div><div class="fine">${item.sample?'Fictional username and sample reviews for this catalog preview.':"Ratings are attached to the seller's connected Ootle wallet and come from verified completed sales."}</div></div><div class="detail-actions"><button class="button" id="productSellerProfile" type="button">Seller profile &amp; reviews</button><button class="button" id="productSellerItems" type="button">See seller’s other items</button><button class="button primary" id="productBuy" type="button" ${item.stock>0?'':'disabled'}>${item.stock>0?'Buy':'Sold out'}</button></div></section></div>`;$('#productDetailContent').querySelectorAll('[data-detail-photo]').forEach(button=>button.onclick=()=>{const index=Number(button.dataset.detailPhoto),image=$('#productDetailImage');image.src=photoList[index];image.alt=`${alt} — large photo ${index+1} of ${photoList.length}`;$('#productDetailContent').querySelectorAll('[data-detail-photo]').forEach(candidate=>candidate.classList.toggle('active',candidate===button))});$('#productSellerProfile').onclick=()=>{$('#productDialog').close();openSellerProfile(item.id)};$('#productSellerItems').onclick=()=>showSellerItems(item);$('#productBuy').onclick=()=>{$('#productDialog').close();selectListing(item.id)};$('#productDialog').showModal()}
-    function purchaseBlockReason(item){if(item?.chainId&&item.marketComponent!==MARKET_COMPONENT_ADDRESS)return'This older listing must be recreated on the new testnet marketplace.';if(!item||item.stock<=0)return'This item is sold out.';if(item.sample||!item.chainId||!item.deliveryPublicKey||!item.paymentAddress)return'This is a catalog sample. You can review the checkout, but this item is not available for purchase.';if(!newPurchasesReady())return'Payments are paused until the upgraded Ootle escrow contract is activated.';return''}
+    function purchaseBlockReason(item){if(item?.chainId&&item.marketComponent!==MARKET_COMPONENT_ADDRESS)return'The seller needs to relist this item from My Items before it can be purchased.';if(!item||item.stock<=0)return'This item is sold out.';if(item.sample||!item.chainId||!item.deliveryPublicKey||!item.paymentAddress)return'This is a catalog sample. You can review the checkout, but this item is not available for purchase.';if(!newPurchasesReady())return'Payments are paused until the upgraded Ootle escrow contract is activated.';return''}
     function selectListing(id){const item=listings.find(x=>x.id===id);if(!item||item.stock<=0){toast('This item is no longer available');return}if(selected?.id!==id){clearShippingFields()}selected=item;selectedQuote=values(selected);deadline=Date.now()+600000;renderCheckout();clearInterval(timerHandle);timerHandle=setInterval(updateTimer,1000);updateTimer();setPage('checkout')}
     function renderPurchaseItem(){if(!selected)return;const image=listingImages(selected)[0]||safeImageSrc(catalogImages[selected.id]?.src),reason=purchaseBlockReason(selected);$('#purchaseItem').innerHTML=`${image?`<img class="purchase-photo" src="${image}" alt="${escapeHtml(selected.name)}">`:''}<div class="item-category">${escapeHtml(listingCategory(selected))}</div><h2>${escapeHtml(selected.name)}</h2><p>${escapeHtml(selected.description)}</p><p>Quantity: 1 · ${selected.stock} available</p><p>Seller: <span class="case-address">${escapeHtml(selected.sample?sampleSellerName(selected.id):selected.paymentAddress||'Seller not connected')}</span></p>${reason?`<div class="purchase-notice" role="status">${escapeHtml(reason)}</div>`:''}`}
     function renderCheckout(){renderPurchaseItem();const v=selectedQuote||values(selected),address=selected.paymentAddress||'';$('#checkoutEmpty').style.display='none';$('#checkoutSummary').classList.add('active');$('#summaryName').textContent=selected.name;$('#summaryReference').textContent='Item and shipping are fixed in XTM';$('#payAmount').textContent=xtm(v.totalXtm);$('#sumItem').textContent=xtm(v.itemXtm);$('#sumShipping').textContent=xtm(v.shippingXtm);$('#sumUsd').textContent=money(v.usd);$('#sumSellerTrust').textContent=selected.sample?sampleSellerName(selected.id)+' · Example':trustLabel(address);$('#addressRow').style.display=address?'flex':'none';$('#sumPaymentAddress').textContent=address;renderWalletState()}
@@ -754,7 +907,7 @@
     async function refreshPaymentCases(){
       if(!walletConnection.connected){renderPaymentCases();return}
       if(paymentRefreshTask)return paymentRefreshTask;
-      const components=[...new Set([MARKET_COMPONENT_ADDRESS,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9',...orders.map(order=>order.marketComponent)])].filter(address=>TRUSTED_MARKET_COMPONENTS.has(address));
+      const components=[...new Set([MARKET_COMPONENT_ADDRESS,PREVIOUS_MARKET_COMPONENT,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9',...orders.map(order=>order.marketComponent)])].filter(address=>TRUSTED_MARKET_COMPONENTS.has(address));
       paymentRefreshTask=(async()=>{
         await Promise.all(components.map(async component=>{
           try{
@@ -822,12 +975,12 @@
       finally{paymentBusy=false;$('#paymentActionConfirm').disabled=false;renderPaymentCases()}
     }
 
-    async function paySellerFee(orderId){
+    async function paySellerFee(orderId,component=MARKET_COMPONENT_ADDRESS){if(!TRUSTED_MARKET_COMPONENTS.has(component))return;
       if(!SECURITY_UPGRADE_READY||transactionBusy)return;
       const account=walletConnection.accountAddress;
       try{
         await refreshPaymentCases();
-        const order=paymentRows().find(row=>row.component===MARKET_COMPONENT_ADDRESS&&row.id===orderId);
+        const order=paymentRows().find(row=>row.component===component&&row.id===orderId);
         if(!walletConnection.connected||account!==walletConnection.accountAddress||!order?.verified||order.seller!==account.toLowerCase()||!order.settled||order.refunded||order.feePaid||order.fee===null)throw new Error('This fee is not available for payment. Refresh your orders.');
         if(order.fee===0){toast('No fee is due for this order.');return}
         await submitInstructions([
@@ -839,8 +992,8 @@
       }catch(error){toast(error.message||'Fee payment was not approved.')}
     }
     function saveOrderState(){localStorage.setItem('xtm-market-orders',JSON.stringify(orders));localStorage.setItem('xtm-market-seller-orders',JSON.stringify(sellerOrders))}
-    function setEscrowStatus(chainOrderId,status){orders.forEach(order=>{if(order.marketComponent===MARKET_COMPONENT_ADDRESS&&order.chainOrderId===chainOrderId)order.status=status});sellerOrders.forEach(order=>{if(order.marketComponent===MARKET_COMPONENT_ADDRESS&&order.chainOrderId===chainOrderId)order.status=status});saveOrderState();renderOrders();renderSellerOrders()}
-    async function escrowOrderAction(chainOrderId,method,status,summary){if(!MARKET_COMPONENT_ADDRESS){toast('Escrow component deployment is pending');return}if(!walletConnection.connected){$('#walletDialog').showModal();return}try{await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,method,[literal(cborHead(0,Number(chainOrderId)))])],summary);setEscrowStatus(chainOrderId,status);await refreshTrustScores();toast(status==='Disputed'?'Escrow paused for dispute':status==='Released'?'Escrow released':'Order updated')}catch(error){toast(error.message||'The escrow update was not approved')}}
+    function setEscrowStatus(chainOrderId,status,component=MARKET_COMPONENT_ADDRESS){orders.forEach(order=>{if(order.marketComponent===component&&order.chainOrderId===chainOrderId)order.status=status});sellerOrders.forEach(order=>{if(order.marketComponent===component&&order.chainOrderId===chainOrderId)order.status=status});saveOrderState();renderOrders();renderSellerOrders()}
+    async function escrowOrderAction(chainOrderId,method,status,summary,component=MARKET_COMPONENT_ADDRESS){if(!TRUSTED_MARKET_COMPONENTS.has(component))return;if(!MARKET_COMPONENT_ADDRESS){toast('Escrow component deployment is pending');return}if(!walletConnection.connected){$('#walletDialog').showModal();return}try{await submitInstructions([componentCall(component,method,[literal(cborHead(0,Number(chainOrderId)))])],summary);setEscrowStatus(chainOrderId,status,component);await refreshTrustScores();toast(status==='Disputed'?'Escrow paused for dispute':status==='Released'?'Escrow released':'Order updated')}catch(error){toast(error.message||'The escrow update was not approved')}}
     function reviewCard(review){
       if(!Number.isInteger(review.stars)||review.stars<1||review.stars>5)return '';
       const comment=review.comment?`<p>${escapeHtml(review.comment)}</p>`:'<p class="fine">Legacy review: no written comment was recorded.</p>',status=review.disputed?'<span class="review-status">Under dispute</span>':'';
@@ -867,10 +1020,10 @@
       box.innerHTML=orders.length?orders.map(order=>{
         const chainReview=order.marketComponent===MARKET_COMPONENT_ADDRESS?sellerReviews.find(candidate=>candidate.orderId===order.chainOrderId):null;
         const displayedReview=chainReview?(chainReview.removed?null:chainReview):order.review;
-        const active=order.marketComponent===MARKET_COMPONENT_ADDRESS&&order.chainOrderId&&!['Released','Refunded','Disputed'].includes(order.status),actions=active?`<div class="order-actions"><button class="button small" data-buyer-action="confirm_receipt" data-order-id="${order.chainOrderId}">Confirm received &amp; review</button><button class="button small danger" data-buyer-action="open_dispute" data-order-id="${order.chainOrderId}">Open dispute</button></div>`:'',canReview=reviewCommentsReady&&order.status==='Released'&&order.chainOrderId&&!order.review&&!chainReview&&order.marketComponent===MARKET_COMPONENT_ADDRESS,review=displayedReview?reviewCard({orderId:order.chainOrderId,...displayedReview}):canReview?`<div class="review-form"><label>Rating and required public comment<select class="select" data-review-stars="${order.chainOrderId}" required><option value="">Choose a rating</option>${[5,4,3,2,1].map(stars=>`<option value="${stars}">${stars} star${stars===1?'':'s'}</option>`).join('')}</select><textarea class="input review-comment" data-review-comment="${order.chainOrderId}" maxlength="500" required placeholder="Describe the item, communication, shipping, and overall sale."></textarea></label><div class="review-submit"><span class="count">Comment required · 500 characters maximum</span><button class="button small primary" data-submit-review="${order.chainOrderId}">Post review</button></div></div>`:'';
+        const active=TRUSTED_MARKET_COMPONENTS.has(order.marketComponent)&&order.chainOrderId&&!['Released','Refunded','Disputed'].includes(order.status),actions=active?`<div class="order-actions"><button class="button small" data-component="${escapeHtml(order.marketComponent)}" data-buyer-action="confirm_receipt" data-order-id="${order.chainOrderId}">Confirm received &amp; review</button><button class="button small danger" data-buyer-action="open_dispute" data-order-id="${order.chainOrderId}">Open dispute</button></div>`:'',canReview=reviewCommentsReady&&order.status==='Released'&&order.chainOrderId&&!order.review&&!chainReview&&order.marketComponent===MARKET_COMPONENT_ADDRESS,review=displayedReview?reviewCard({orderId:order.chainOrderId,...displayedReview}):canReview?`<div class="review-form"><label>Rating and required public comment<select class="select" data-review-stars="${order.chainOrderId}" required><option value="">Choose a rating</option>${[5,4,3,2,1].map(stars=>`<option value="${stars}">${stars} star${stars===1?'':'s'}</option>`).join('')}</select><textarea class="input review-comment" data-review-comment="${order.chainOrderId}" maxlength="500" required placeholder="Describe the item, communication, shipping, and overall sale."></textarea></label><div class="review-submit"><span class="count">Comment required · 500 characters maximum</span><button class="button small primary" data-submit-review="${order.chainOrderId}">Post review</button></div></div>`:'';
         return `<div class="order"><div><strong>${escapeHtml(order.name)}</strong><small>${escapeHtml(order.id)} · ${money(order.usd)}</small>${review}</div><div><strong>${xtm(order.xtm)}</strong><div class="status">${escapeHtml(order.status)}</div>${actions}</div></div>`
       }).join(''):'<div class="none">No orders yet. Create one from a listing above.</div>';
-      box.querySelectorAll('[data-buyer-action]').forEach(button=>button.onclick=()=>button.dataset.buyerAction==='confirm_receipt'?openReceiptReview(Number(button.dataset.orderId)):setPage('cases'));
+      box.querySelectorAll('[data-buyer-action]').forEach(button=>button.onclick=()=>button.dataset.buyerAction==='confirm_receipt'?openReceiptReview(Number(button.dataset.orderId),button.dataset.component):setPage('cases'));
       box.querySelectorAll('[data-submit-review]').forEach(button=>button.onclick=()=>{const id=Number(button.dataset.submitReview),stars=Number(box.querySelector(`[data-review-stars="${id}"]`).value),comment=box.querySelector(`[data-review-comment="${id}"]`).value.trim();if(!stars){toast('Choose a one-to-five-star rating');return}if(!comment){toast('A written review comment is required');return}submitSellerReview(id,stars,comment)})
     }
     function openReviewDispute(orderId){$('#reviewDisputeOrder').value=orderId;$('#reviewDisputeReason').value='';$('#reviewDisputeDialog').showModal()}
@@ -880,13 +1033,13 @@
       const account=walletConnection.accountAddress.toLowerCase(),sales=sellerOrders.filter(sale=>String(sale.sellerAddress||'').toLowerCase()===account);
       if(!sales.length){box.innerHTML='<div class="none">No sales have been received by this wallet yet.</div>';return}
       const rows=await Promise.all(sales.map(async sale=>{
-        const delivery=await decryptSellerDelivery(sale),details=delivery?`<div class="delivery-address">${delivery.name?`<strong>${escapeHtml(delivery.name)}</strong>`:''}${escapeHtml(delivery.address)}</div>`:'<div class="delivery-address">Shipping details received securely.</div>',canShip=sale.marketComponent===MARKET_COMPONENT_ADDRESS&&sale.chainOrderId&&sale.status==='In escrow',canClaim=sale.marketComponent===MARKET_COMPONENT_ADDRESS&&sale.chainOrderId&&(SECURITY_UPGRADE_READY?['In escrow','Shipped','Delivered']:['Shipped','Delivered']).includes(sale.status),actions=(canShip?`<div class="order-actions"><button class="button small" data-seller-action="mark_shipped" data-order-id="${sale.chainOrderId}">Mark shipped</button></div>`:'')+(canClaim?`<div class="order-actions"><button class="button small" data-seller-action="claim_after_timeout" data-order-id="${sale.chainOrderId}">Claim eligible payment</button></div>`:''),review=sellerReviews.find(candidate=>candidate.orderId===sale.chainOrderId&&!candidate.removed),reviewView=review?`${reviewCard(review)}${review.disputed?'<div class="moderation-note">This review is waiting for an owner decision.</div>':`<div class="order-actions"><button class="button small danger" data-dispute-review="${review.orderId}">Dispute rating or comment</button></div>`}`:'';
-        const feeOrder=paymentRows().find(order=>order.component===sale.marketComponent&&order.id===sale.chainOrderId),feeAction=SECURITY_UPGRADE_READY&&sale.marketComponent===MARKET_COMPONENT_ADDRESS&&feeOrder?.verified&&feeOrder.settled&&!feeOrder.refunded&&!feeOrder.feePaid&&feeOrder.fee>0?`<button class="button small" data-pay-seller-fee="${feeOrder.id}">Pay separate 3% fee</button>`:'';
+        const delivery=await decryptSellerDelivery(sale),details=delivery?`<div class="delivery-address">${delivery.name?`<strong>${escapeHtml(delivery.name)}</strong>`:''}${escapeHtml(delivery.address)}</div>`:'<div class="delivery-address">Shipping details received securely.</div>',canShip=TRUSTED_MARKET_COMPONENTS.has(sale.marketComponent)&&sale.chainOrderId&&sale.status==='In escrow',canClaim=TRUSTED_MARKET_COMPONENTS.has(sale.marketComponent)&&sale.chainOrderId&&(SECURITY_UPGRADE_READY?['In escrow','Shipped','Delivered']:['Shipped','Delivered']).includes(sale.status),actions=(canShip?`<div class="order-actions"><button class="button small" data-component="${escapeHtml(sale.marketComponent)}" data-seller-action="mark_shipped" data-order-id="${sale.chainOrderId}">Mark shipped</button></div>`:'')+(canClaim?`<div class="order-actions"><button class="button small" data-component="${escapeHtml(sale.marketComponent)}" data-seller-action="claim_after_timeout" data-order-id="${sale.chainOrderId}">Claim eligible payment</button></div>`:''),review=sale.marketComponent===MARKET_COMPONENT_ADDRESS?sellerReviews.find(candidate=>candidate.orderId===sale.chainOrderId&&!candidate.removed):null,reviewView=review?`${reviewCard(review)}${review.disputed?'<div class="moderation-note">This review is waiting for an owner decision.</div>':`<div class="order-actions"><button class="button small danger" data-dispute-review="${review.orderId}">Dispute rating or comment</button></div>`}`:'';
+        const feeOrder=paymentRows().find(order=>order.component===sale.marketComponent&&order.id===sale.chainOrderId),feeAction=SECURITY_UPGRADE_READY&&TRUSTED_MARKET_COMPONENTS.has(sale.marketComponent)&&feeOrder?.verified&&feeOrder.settled&&!feeOrder.refunded&&!feeOrder.feePaid&&feeOrder.fee>0?`<button class="button small" data-component="${escapeHtml(sale.marketComponent)}" data-pay-seller-fee="${feeOrder.id}">Pay separate 3% fee</button>`:'';
         return `<div class="order seller-order"><div><span class="new-sale">Escrow sale</span><strong>${escapeHtml(sale.name)}</strong><small>${escapeHtml(sale.id)} · ${new Date(sale.created).toLocaleString()}</small>${details}<div class="fine">Payment entered escrow at purchase and remains held until release or refund.</div>${reviewView}</div><div><strong>${xtm(sale.xtm)}</strong><div class="status">${escapeHtml(sale.status)}</div>${actions}${feeAction}</div></div>`
       }));
       box.innerHTML=rows.join('');
-      box.querySelectorAll('[data-pay-seller-fee]').forEach(button=>button.onclick=()=>paySellerFee(Number(button.dataset.paySellerFee)));
-      box.querySelectorAll('[data-seller-action]').forEach(button=>button.onclick=()=>escrowOrderAction(Number(button.dataset.orderId),button.dataset.sellerAction,button.dataset.sellerAction==='mark_shipped'?'Shipped':'Released',button.dataset.sellerAction==='mark_shipped'?'Mark escrow order shipped':'Claim escrow after the 14-day release period'));
+      box.querySelectorAll('[data-pay-seller-fee]').forEach(button=>button.onclick=()=>paySellerFee(Number(button.dataset.paySellerFee),button.dataset.component));
+      box.querySelectorAll('[data-seller-action]').forEach(button=>button.onclick=()=>escrowOrderAction(Number(button.dataset.orderId),button.dataset.sellerAction,button.dataset.sellerAction==='mark_shipped'?'Shipped':'Released',button.dataset.sellerAction==='mark_shipped'?'Mark escrow order shipped':'Claim escrow after the 14-day release period',button.dataset.component));
       box.querySelectorAll('[data-dispute-review]').forEach(button=>button.onclick=()=>openReviewDispute(Number(button.dataset.disputeReview)))
     }
     function renderModeration(){
@@ -940,9 +1093,10 @@
     const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>openWalletConnection();$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{browserUnlockPending=false;$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
     $('#closeProfile').onclick=()=>$('#profileDialog').close();
     $('#closeProduct').onclick=()=>$('#productDialog').close();
-    function openReceiptReview(orderId){$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}
+    let receiptReviewComponent=MARKET_COMPONENT_ADDRESS;
+    function openReceiptReview(orderId,component=MARKET_COMPONENT_ADDRESS){if(!TRUSTED_MARKET_COMPONENTS.has(component))return;receiptReviewComponent=component;$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}
     $('#closeReceiptReview').onclick=$('#cancelReceiptReview').onclick=()=>$('#receiptReviewDialog').close();
-    $('#receiptReviewForm').onsubmit=async event=>{event.preventDefault();const orderId=Number($('#receiptReviewOrder').value),stars=Number($('#receiptReviewStars').value),comment=$('#receiptReviewComment').value.trim();if(!Number.isInteger(stars)||stars<1||stars>5){toast('Choose a one-to-five-star rating');return}if(!comment){toast('A written review comment is required');return}if(!reviewCommentsReady){toast('Receipt confirmation with review requires the v0.5 market component');return}if(!walletConnection.connected){$('#receiptReviewDialog').close();$('#walletDialog').showModal();return}try{await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'confirm_receipt_and_review',[literal(cborHead(0,orderId)),literal(cborHead(0,stars)),literal(cborText(comment))])],`Confirm receipt, leave ${stars} stars, and release escrow`);const order=orders.find(candidate=>candidate.marketComponent===MARKET_COMPONENT_ADDRESS&&candidate.chainOrderId===orderId);if(order){order.status='Released';order.review={stars,comment}}sellerOrders.forEach(order=>{if(order.marketComponent===MARKET_COMPONENT_ADDRESS&&order.chainOrderId===orderId)order.status='Released'});saveOrderState();$('#receiptReviewDialog').close();await refreshTrustScores();toast('Receipt confirmed, review posted, and escrow released')}catch(error){toast(error.message||'Receipt confirmation and payment release were not approved')}};
+    $('#receiptReviewForm').onsubmit=async event=>{event.preventDefault();const component=receiptReviewComponent;if(!TRUSTED_MARKET_COMPONENTS.has(component))return;const orderId=Number($('#receiptReviewOrder').value),stars=Number($('#receiptReviewStars').value),comment=$('#receiptReviewComment').value.trim();if(!Number.isInteger(stars)||stars<1||stars>5){toast('Choose a one-to-five-star rating');return}if(!comment){toast('A written review comment is required');return}if(!reviewCommentsReady){toast('Receipt confirmation with review requires the v0.5 market component');return}if(!walletConnection.connected){$('#receiptReviewDialog').close();$('#walletDialog').showModal();return}try{await submitInstructions([componentCall(component,'confirm_receipt_and_review',[literal(cborHead(0,orderId)),literal(cborHead(0,stars)),literal(cborText(comment))])],`Confirm receipt, leave ${stars} stars, and release escrow`);const order=orders.find(candidate=>candidate.marketComponent===component&&candidate.chainOrderId===orderId);if(order){order.status='Released';order.review={stars,comment}}sellerOrders.forEach(order=>{if(order.marketComponent===component&&order.chainOrderId===orderId)order.status='Released'});saveOrderState();$('#receiptReviewDialog').close();await refreshTrustScores();toast('Receipt confirmed, review posted, and escrow released')}catch(error){toast(error.message||'Receipt confirmation and payment release were not approved')}};
     $('#closeReviewDispute').onclick=$('#cancelReviewDispute').onclick=()=>$('#reviewDisputeDialog').close();
     $('#reviewDisputeForm').onsubmit=async event=>{event.preventDefault();if(!reviewCommentsReady){toast('Seller disputes require the v0.5 market component');return}if(!walletConnection.connected){$('#reviewDisputeDialog').close();$('#walletDialog').showModal();return}const orderId=Number($('#reviewDisputeOrder').value),reason=$('#reviewDisputeReason').value.trim();if(!reason)return;try{await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'dispute_review',[literal(cborHead(0,orderId)),literal(cborText(reason))])],'Dispute this seller review');$('#reviewDisputeDialog').close();await refreshTrustScores();toast('Review dispute sent to the marketplace owner')}catch(error){toast(error.message||'The review dispute was not approved')}};
     $('#copyPairing').onclick=async()=>{const uri=$('#pairingUri').value;if(!uri)return;try{await navigator.clipboard.writeText(uri);toast('Pairing link copied')}catch{toast('Select and copy the pairing link')} };
@@ -954,7 +1108,8 @@
     $('#sellerUsername').oninput=updateUsernameStatus;
     document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',promptSavedBrowserWallet));
     document.addEventListener('visibilitychange',promptSavedBrowserWallet);
-    showLegalNotice();render();renderWalletState();setPage(pageFromHash(),false);refreshRates();refreshTrustScores();setInterval(refreshRates,60000);restoreWalletSession();
+    showLegalNotice();render();renderWalletState();setPage(pageFromHash(),false);refreshRates();refreshTrustScores();setInterval(refreshRates,60000);setInterval(refreshTrustScores,30000);restoreWalletSession();
+    $('#refreshMyItems').onclick=refreshMyItems;$('#editItemForm').onsubmit=saveMyItem;$('#closeEditItem').onclick=()=>$('#editItemDialog').close();
     const modelContext=document.modelContext;
     if(modelContext?.registerTool){
       try{void Promise.resolve(modelContext.registerTool({name:'quote_listing',title:'Quote listing',description:'Read the fixed XTM price and live USD reference for one marketplace listing.',inputSchema:{type:'object',properties:{listing_id:{type:'number'}},required:['listing_id'],additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input.listing_id!=='number')throw new Error('listing_id must be a number');const item=listings.find(x=>x.id===input.listing_id);if(!item)throw new Error('Listing not found');return{listing_id:item.id,listing:item.name,...values(item)}}})).catch(()=>{})}catch{}

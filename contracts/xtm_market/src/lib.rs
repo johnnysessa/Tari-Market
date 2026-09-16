@@ -235,6 +235,8 @@ mod xtm_market {
                     .method("remove_review", rule!(allow_all))
                     .method("buy", rule!(allow_all))
                     .method("create_listing", rule!(allow_all))
+                    .method("update_listing", rule!(allow_all))
+                    .method("cancel_listing", rule!(allow_all))
                     .method("mark_shipped", rule!(allow_all))
                     .method("confirm_receipt_and_review", rule!(allow_all))
                     .method("open_dispute", rule!(allow_all))
@@ -334,6 +336,34 @@ mod xtm_market {
                 },
             );
             id
+        }
+
+        // Listing management is seller-only, including when the caller is an admin.
+        // Existing orders keep their captured amounts and settlement destinations.
+        pub fn update_listing(&mut self, listing_id: u64, title: String, usd_cents: u64,
+            xtm_price: Amount, shipping_xtm: Amount, inventory: u64) {
+            let listing = self.listings.get_mut(&listing_id).expect("Listing not found");
+            assert_eq!(CallerContext::transaction_signer_public_key(), listing.seller,
+                "Only the original seller may edit this listing");
+            assert!(listing.active, "Listing is deleted");
+            assert!(!title.trim().is_empty() && title.len() <= 200, "Title must be 1–200 bytes");
+            assert!(usd_cents > 0 && xtm_price.is_positive(), "Price must be positive");
+            assert!(shipping_xtm >= Amount::ZERO, "Shipping must not be negative");
+            listing.title = title;
+            listing.usd_cents = usd_cents;
+            listing.xtm_price = xtm_price;
+            listing.shipping_xtm = shipping_xtm;
+            listing.inventory = inventory;
+        }
+
+        // Retain the listing record for order history while preventing new purchases.
+        pub fn cancel_listing(&mut self, listing_id: u64) {
+            let listing = self.listings.get_mut(&listing_id).expect("Listing not found");
+            assert_eq!(CallerContext::transaction_signer_public_key(), listing.seller,
+                "Only the original seller may delete this listing");
+            assert!(listing.active, "Listing is already deleted");
+            listing.active = false;
+            listing.inventory = 0;
         }
 
         // The owner-authorized oracle updates the USD reference; the XTM price stays fixed.

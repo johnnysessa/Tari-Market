@@ -1,16 +1,16 @@
 {
   "network": "esmeralda",
-  "contract_version": "0.11.0",
+  "contract_version": "0.12.0",
   "status": "esmeralda_testnet_open_integration_testing",
   "platform_fee_percent": 3,
   "platform_payment_component": "component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c",
-  "template_address": "template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2",
-  "market_component_address": "component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c",
-  "previous_market_component": "component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9",
+  "template_address": "template_ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a",
+  "market_component_address": "component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938",
+  "previous_market_component": "component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c",
   "unused_duplicate_component": "component_6568dc76fb9161ea0b1576e1cf8dcde4edabd847e19d7cf513f2dc1b9bf74162",
-  "escrow_template_address": "template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2",
-  "escrow_market_component_address": "component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c",
-  "escrow_instantiation_transaction": "e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f",
+  "escrow_template_address": "template_ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a",
+  "escrow_market_component_address": "component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938",
+  "escrow_instantiation_transaction": "201ff42a769e7592b876712a4f5cfba2f86026a87f3720a718d43bde8a13837e",
   "pending_admin_upgrade": {
     "source_version": "0.8.0",
     "status": "compiled_pending_publish_and_instantiation",
@@ -45,11 +45,31 @@
     "activation_gate": "Enabled for user-authorized Esmeralda testing; not a production validation",
     "legacy_warning": "Existing components retain original code; username reservations do not span independent components."
   },
-  "template_publish_transaction": "5bebf379a868b4d396aa9ff0b68795abff90457097095022e2690b2fb209aa09",
+  "template_publish_transaction": "f02497b0168f93b499498422b7a85aed844c373bb1de9b4d7004c0d67cde8ca7",
   "verification": {
-    "source": "user supplied accepted receipts and live indexer verified=true",
+    "source": "Accepted owner-signed receipt and live indexer verified=true on 2026-09-16",
     "owner_rule": "None",
     "state_field_count": 15,
-    "end_to_end_wallet_flows": "pending user testing"
+    "end_to_end_wallet_flows": "pending user testing",
+    "owner_signer": "d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828"
+  },
+  "pending_listing_management_upgrade": {
+    "source_version": "0.12.0",
+    "status": "published_instantiated_verified_active",
+    "artifact": "contracts/artifacts/XTM_Market_ListingManagement_v0.12.0_Esmeralda.wasm",
+    "sha256": "e1ef340b8359ff9a1dd1daf4ad2623e5b74f9d194f1d3fa06d09f8a3e68e5f7c",
+    "template_address": "template_ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a",
+    "publish_transaction": "f02497b0168f93b499498422b7a85aed844c373bb1de9b4d7004c0d67cde8ca7",
+    "qa_component_only": "component_b665f6eb55aacfb61e3326ae56046264818739ff8b3ca2e7ef097e1c54a3786d",
+    "qa_transactions": {
+      "instantiate": "82c6b4d8685fda376875f5c242422e2630bec79cbc6b59551a571cc358f9bb16",
+      "create": "3f46e632b9551fafcdef1e4242edfdbded3acfb64aa5a9a1fd8d316fba06749b",
+      "reject-other-edit": "014a3672c24509234314e5319f5d7483a26db88f486cbb85bdb1004d88346e84",
+      "reject-other-delete": "71ffd6aab1635c5d6c5809f75f7d7db996605fb62c338d1946b0920914cbfe80",
+      "seller-edit": "4aa259963598f1c7ffe940c490dbd4c6f2c1f3e4bcd8c7e6d2a8d532adad4f90",
+      "seller-delete": "061c520b2767046d2df051bcbf43d9d25e4ec2aeff4cd98c00294c3ab30e3b6e",
+      "reject-edit-deleted": "634ce6205888a443d6983147e102c288b4833009b0058e299b8e4e66432acc2d"
+    },
+    "activation_gate": "LISTING_MANAGEMENT_READY=true; legacy listings require original seller relisting"
   }
 }

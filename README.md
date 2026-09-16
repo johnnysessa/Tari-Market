@@ -1,3 +1,5 @@
+> Current active contract: v0.12.0. Earlier v0.11 rollout sections below are historical. See My Items at the end and contracts/deployment/esmeralda.json for the active deployment.
+
 # XTM Market
 
 XTM Market is an open-source marketplace prototype for Tari Ootle. Items and shipping are priced in XTM, with a live USD reference. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
@@ -234,7 +236,7 @@ See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for findings, remediations, evidenc
 | `dist/assets/vendor/` | Vendored WalletConnect modules and shims |
 | `dist/assets/` | Product photography and client assets |
 | `dist/_headers` | Static hosting security-header configuration |
-| `contracts/xtm_market/src/lib.rs` | Current v0.11.0 Rust contract source |
+| `contracts/xtm_market/src/lib.rs` | Current v0.12.0 Rust contract source |
 | `contracts/xtm_market/Cargo.toml` and `Cargo.lock` | Contract dependencies and build configuration |
 | `contracts/artifacts/` | Versioned compiled WASM artifacts and checksums |
 | `contracts/deployment/esmeralda.json` | Recorded deployment references and pending-upgrade metadata |
@@ -384,3 +386,24 @@ until the browser wallet is selected again. Explicitly choosing WalletConnect or
 Tari Universe preserves that choice instead. The local launcher retains its
 existing account reconnect flow. A new browser wallet still needs its own funded
 on-chain account for payments; no faucet or automatic transaction is added.
+
+### Connected wallet display
+
+The header and checkout show the registered seller username, or the wallet-provided
+account name when available, plus the public spendable tTari balance. Unnamed
+accounts use the wallet type as a label. Balance reads use the connected Esmeralda
+account and its Tari vaults, refresh every 30 seconds and after transactions, and
+show an unavailable state on read errors. Shielded funds and escrow are excluded.
+Responses from disconnected or replaced wallets are discarded.
+
+Validation: `node tests/wallet-summary.cjs`.
+
+### My Items — active on v0.12
+
+The owner-signed v0.12 component is verified and activated. My Items lets the original seller edit title, price, shipping, and quantity, or delete a listing. Deletion deactivates it and retains order history; existing escrow is unchanged. The public catalog refreshes on-chain title, prices, inventory, and deletion state every 30 seconds.
+
+Older v0.11 listings show **Relist to enable editing**. The original seller approves this once, from the browser holding that item's delivery decryption key. Local photos/descriptions and the delivery key are preserved. Relisting is not automatic, and old contract listings remain callable directly; the confirmation explains the inventory implications. Existing orders and disputes keep their original component references.
+
+The v0.12 template passed 14 Rust unit tests and isolated live Esmeralda seller edit/delete and unauthorized-wallet rejection scenarios. The UI regression covers relisting guards, duplicate recovery, metadata retention, component-ID collisions and catalog reconciliation. Full buyer-to-seller lifecycle regression testing on v0.12 is still pending.
+
+Current deployment identities and accepted transaction IDs are recorded in `contracts/deployment/esmeralda.json`; rollout notes are in `contracts/deployment/LISTING_MANAGEMENT_ROLLOUT.md`.

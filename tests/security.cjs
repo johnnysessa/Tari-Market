@@ -36,7 +36,7 @@ check(()=>assert.equal(vm.runInContext('isMarketplaceAdmin()',roles),true));
 vm.runInContext('walletConnection.connected=false',roles);
 check(()=>assert.equal(vm.runInContext('isMarketplaceAdmin()',roles),false));
 for(const file of JSON.parse(fs.readFileSync('security/vendor-manifest.json','utf8')))check(()=>assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file.file)).digest('hex'),file.local_sha256));
-const usernameContext=vm.createContext({Map,Number,String,Object,Array});
+const usernameContext=vm.createContext({Map,Number,String,Object,Array,MARKET_COMPONENT_ADDRESS:'active'});
 const usernameCode=app.slice(app.indexOf('    const SELLER_USERNAMES_READY='),app.indexOf('    function shortAddress')).replace('SELLER_USERNAMES_READY=false','SELLER_USERNAMES_READY=true');
 vm.runInContext(line('reviewField')+'\nfunction paymentAddress(v){return v}\nfunction shortAddress(v){return v}\n'+usernameCode,usernameContext);
 check(()=>assert.equal(usernameContext.normalizeSellerUsername(' Shop_One '),'shop_one'));
@@ -44,12 +44,13 @@ for(const invalid of ['ab','a'.repeat(25),'shоp','admin','Owner','<script>','sh
 const usernameKey='a'.repeat(64),usernameAddress='component_'+'b'.repeat(64);
 const usernameState=Array(15).fill(null);usernameState[13]={[usernameKey]:'shop_one'};usernameState[14]={shop_one:usernameKey};usernameState[3]={'1':{id:1,seller:usernameKey,seller_payment_address:usernameAddress}};
 usernameContext.refreshUsernameRegistry(usernameState);
-check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:usernameAddress}),'@shop_one'));
-check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:'other'}),'other'));
+check(()=>assert.equal(usernameContext.sellerIdentity({marketComponent:'active',chainId:1,paymentAddress:usernameAddress}),'@shop_one'));
+check(()=>assert.equal(usernameContext.sellerIdentity({marketComponent:'active',chainId:1,paymentAddress:'other'}),'other'));
+check(()=>assert.equal(usernameContext.sellerIdentity({marketComponent:'legacy',chainId:1,paymentAddress:usernameAddress}),usernameAddress));
 usernameState[14].shop_one='c'.repeat(64);usernameContext.refreshUsernameRegistry(usernameState);
-check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:usernameAddress}),usernameAddress));
+check(()=>assert.equal(usernameContext.sellerIdentity({marketComponent:'active',chainId:1,paymentAddress:usernameAddress}),usernameAddress));
 usernameContext.refreshUsernameRegistry(null);
-check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:usernameAddress}),usernameAddress));
+check(()=>assert.equal(usernameContext.sellerIdentity({marketComponent:'active',chainId:1,paymentAddress:usernameAddress}),usernameAddress));
 async function walletRoutingTest(){
   for(const [available,choice,expected] of [[false,'walletconnect','walletconnect'],[true,'provider','provider'],[true,'walletconnect','walletconnect']]){
     let route='',pairing='';const nodes={};const provider={isAvailable:available,isEmbedded:available,info:{rdns:'mw.tari.universe'},request:async()=>{assert(available);route='provider';return['account']}};
