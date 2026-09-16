@@ -1,10 +1,10 @@
 > Current active contract: v0.12.0. Earlier v0.11 rollout sections below are historical. See My Items at the end and contracts/deployment/esmeralda.json for the active deployment.
 
-# XTM Market
+# Tari Market
 
-XTM Market is an open-source marketplace prototype for Tari Ootle. Items and shipping are priced in XTM, with a live USD reference. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
+Tari Market is an open-source marketplace prototype for Tari Ootle. Items and shipping are priced in XTM, with a live USD reference. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
 
-**[Open XTM Market](https://xtm-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
+**[Open Tari Market](https://xtm-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
 
 Updated September 15, 2026. Current contract source: **v0.11.0**.
 
@@ -24,13 +24,13 @@ Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e2
 
 **WalletConnect is the default on the public website.** Click **Connect Tari wallet → WalletConnect → Connect wallet** to generate a private pairing link for a compatible Tari Esmeralda wallet. Do not share that link.
 
-| Where you open XTM Market | Default connection | Other options |
+| Where you open Tari Market | Default connection | Other options |
 |---|---|---|
 | Public site in a normal browser | WalletConnect | Local Asset Vault launcher; browser provider if available |
 | Inside Tari Universe with its provider available | Tari Universe / browser wallet | WalletConnect and local launcher instructions |
 | Local launcher at `http://localhost:5180` | Asset Vault local connection | WalletConnect; browser provider if available |
 
-Asset Vault **v0.40.0 does not expose its WalletConnect button**. Restoring WalletConnect on XTM Market does not enable it inside that wallet. Use the optional local launcher with this Asset Vault version.
+Asset Vault **v0.40.0 does not expose its WalletConnect button**. Restoring WalletConnect on Tari Market does not enable it inside that wallet. Use the optional local launcher with this Asset Vault version.
 
 **No template or component update is required for these wallet connection changes.** The existing v0.11.0 Esmeralda template and component remain active. Website versions 79–80 added the local launcher and restored WalletConnect as the public default.
 
@@ -39,8 +39,8 @@ Asset Vault **v0.40.0 does not expose its WalletConnect button**. Restoring Wall
 Asset Vault's v0.40.0 build hides its WalletConnect button; the previous pairing instructions were incorrect for that release. Use the **local Esmeralda launcher** instead. The public site offers the download under **Connect Tari wallet → Asset Vault / local test launcher**. Tari Universe and an explicit WalletConnect option for compatible wallets remain available.
 
 1. Keep walletd running on Esmeralda and sign in at `http://localhost:5100`.
-2. In **API Keys** (key icon), create a short-lived `XTM Market Local` key with only `accounts:read`, `transactions:read`, `transaction_requests:create`, and `transaction_requests:read`. Do not grant Admin, direct `transactions:create`, or `transaction_requests:approve`.
-3. Download and unzip [the local launcher](https://xtm-market.johnnytsunami14.chatgpt.site/downloads/xtm-market-local.zip). In a second Terminal run `cd "$HOME/Downloads/XTM-Market-Local"`, then `python3 start.py`. Python 3.9+ is required, with no additional packages.
+2. In **API Keys** (key icon), create a short-lived `Tari Market Local` key with only `accounts:read`, `transactions:read`, `transaction_requests:create`, and `transaction_requests:read`. Do not grant Admin, direct `transactions:create`, or `transaction_requests:approve`.
+3. Download and unzip [the local launcher](https://xtm-market.johnnytsunami14.chatgpt.site/downloads/xtm-market-local.zip). In a second Terminal run `cd "$HOME/Downloads/Tari-Market-Local"`, then `python3 start.py`. Python 3.9+ is required, with no additional packages.
 4. Paste the key only into the hidden Terminal prompt. It stays in the launcher's memory, never in browser storage, a file, or the public site.
 5. Open `http://localhost:5180`, connect, and create a test listing. Review its request at `http://localhost:5100/transaction-requests`. The daemon requires separate approval before it can be submitted.
 
@@ -56,7 +56,7 @@ The website includes the following recent changes:
 
 - Sellers choose a unique wallet-linked username in the listing form. Registration is available during Esmeralda testing.
 - The buy page shows **Seller claim window — 14 days after recorded purchase**. Checkout terms, the escrow guide, dispute timing guidance, and automatic-review explanations use the same purchase-based rule.
-- The top-left **XTM Market** button opens the Market page.
+- The top-left **Tari Market** button opens the Market page.
 - The bottom of the Market page offers **8, 16, 24, 32, 64, or 128 items per page**, remembers the selection in this browser, and returns to page one when changed.
 - The **v0.11.0** template is published and its component is instantiated on Esmeralda. The wallet updates do not change either address.
 - WalletConnect is the default on the public website; the optional local launcher uses Asset Vault’s separate request approvals.
@@ -79,7 +79,7 @@ The new timeout is measured as **1,008 consensus epochs**, approximately 14 days
 | 3% fee | Explain app-maintenance and future Tari-development funding, the item-price-only calculation, and separate seller payment under v0.11.0. |
 | Admin disputes | Combined payment-dispute and rating-dispute workspace, including Manage admins. Hidden from disconnected and non-admin wallets. |
 
-Clicking **XTM Market** in the top-left corner returns to the Market page. The brand button also supports keyboard navigation.
+Clicking **Tari Market** in the top-left corner returns to the Market page. The brand button also supports keyboard navigation.
 
 Admin navigation is an interface convenience; the contract's signer checks enforce authorization. Ordinary buyers retain their own Refunds & disputes page. Sellers start rating disputes from Orders received.
 
@@ -299,7 +299,7 @@ The current component and template are listed in Current status above and in `co
 | v0.3–v0.5 | Seller trust, profiles, written feedback, review disputes/moderation, and required review on receipt confirmation |
 | v0.6 | Item-price-only 3% fee; historical release-time deduction subsequently superseded in v0.9.0 |
 | v0.7 | Automatic five-star **Sale Satisfactory** feedback on eligible undisputed timeout claims |
-| Brand navigation | Top-left XTM Market button returns to the Market page with keyboard support |
+| Brand navigation | Top-left Tari Market button returns to the Market page with keyboard support |
 | Marketplace browsing | Community listings first, samples displaced as listings grow, category/seller browsing, and adjustable 8/16/24/32/64/128-item pagination |
 | Purchase screen | Buy action in product details, dedicated checkout, optional name/Resident, and structured shipping inputs |
 | Explanatory pages | Ootle escrow guide, dispute/refund guide, and 3% fee maintenance/Tari-development explanation |
@@ -318,7 +318,7 @@ Compiled historical artifacts are preserved for provenance. Their presence is no
 
 ## License
 
-XTM Market is released under the [MIT License](LICENSE). Retain applicable third-party notices when redistributing vendored dependencies.
+Tari Market is released under the [MIT License](LICENSE). Retain applicable third-party notices when redistributing vendored dependencies.
 
 ## Browser test wallet (Esmeralda only)
 
@@ -328,7 +328,7 @@ keys locally, then requests the native faucet’s 1,000 test Tari grant (less th
 network fee, capped at 0.3 test Tari) after the explicit setup action. No recovery
 phrase is requested. Returning users
 unlock the same encrypted wallet. Download the encrypted backup from this panel;
-restore it in a browser without an existing XTM Market test wallet, using the same
+restore it in a browser without an existing Tari Market test wallet, using the same
 password. There is no server-side password reset. Browser data deletion without a
 backup loses access.
 

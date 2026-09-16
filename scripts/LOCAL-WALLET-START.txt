@@ -1,6 +1,6 @@
-XTM MARKET — LOCAL ESMERALDA TEST
+TARI MARKET — LOCAL ESMERALDA TEST
 
-This launcher connects a local copy of XTM Market to Asset Vault v0.40.0.
+This launcher connects a local copy of Tari Market to Asset Vault v0.40.0.
 It does not replace your wallet or republish the template/component.
 Use test funds only. Live listing and purchase testing is still required.
 
@@ -10,7 +10,7 @@ http://localhost:5100
 
 2. CREATE A LIMITED API KEY IN ASSET VAULT
 Click the key-shaped icon in the left sidebar (API Keys).
-Create a key named XTM Market Local. Choose a short expiry (e.g. one day).
+Create a key named Tari Market Local. Choose a short expiry (e.g. one day).
 Select ONLY these four permissions:
   accounts:read
   transactions:read
@@ -20,10 +20,10 @@ Do not select Admin, transactions:create or transaction_requests:approve.
 Copy the generated tw_ key. Do not paste it into a website or chat.
 
 3. START THE MARKETPLACE
-Unzip xtm-market-local.zip in Downloads. Open a NEW Terminal window.
+Unzip tari-market-local.zip in Downloads. Open a NEW Terminal window.
 Run these two commands, one at a time:
 
-cd "$HOME/Downloads/XTM-Market-Local"
+cd "$HOME/Downloads/Tari-Market-Local"
 python3 start.py
 
 When asked, paste the API key and press Return. Typing/pasting is hidden.
@@ -45,8 +45,8 @@ Choose List an item. Use a test product and your connected wallet address.
 Choose your seller username and submit. The marketplace shows a request ID.
 Open http://localhost:5100/transaction-requests (the check-circle icon).
 Review the exact transaction and fee. Approve only the request you intended.
-Return to XTM Market and keep its tab open; it submits after your approval.
-If the wallet UI already submitted it, XTM Market tracks that transaction.
+Return to Tari Market and keep its tab open; it submits after your approval.
+If the wallet UI already submitted it, Tari Market tracks that transaction.
 Rejecting the request prevents submission. Requests expire after 10 minutes;
 the transaction's epoch bound can also expire before approval.
 
@@ -54,7 +54,7 @@ Keep both Terminal windows open while testing. To stop this launcher,
 press Control+C in its window. Revoke its API key in Asset Vault when done.
 
 TROUBLESHOOTING
-- No such directory: ensure the extracted folder is XTM-Market-Local in
+- No such directory: ensure the extracted folder is Tari-Market-Local in
   Downloads, or type cd followed by a space and drag the folder into Terminal.
 - Python missing: install Python 3.9+ from https://www.python.org/downloads/macos/.
 - Wallet unavailable: keep walletd running on port 5100, on Esmeralda.

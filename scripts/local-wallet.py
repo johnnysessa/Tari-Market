@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run XTM Market locally with walletd's separately approved transaction requests.
+"""Run Tari Market locally with walletd's separately approved transaction requests.
 
 Python 3.9+; standard library only. The wallet API key stays in this process.
 The helper never calls a signing, approval, transfer, or direct-submit endpoint.
@@ -248,10 +248,10 @@ def main():
     here = Path(__file__).resolve().parent
     root = here / "site" if (here / "site").is_dir() else here.parent / "dist"
     if not (root / "index.html").is_file():
-        raise SystemExit("Keep this launcher beside its site folder, or inside the XTM Market scripts folder.")
-    print("XTM Market — Esmeralda local test launcher\n")
+        raise SystemExit("Keep this launcher beside its site folder, or inside the Tari Market scripts folder.")
+    print("Tari Market — Esmeralda local test launcher\n")
     print("Keep Asset Vault running at http://localhost:5100 and sign in there.")
-    print("Open its key icon (API Keys), create a short-lived key named XTM Market Local.")
+    print("Open its key icon (API Keys), create a short-lived key named Tari Market Local.")
     print("Select ONLY: " + PERMISSIONS)
     print("Do not grant Admin, transactions:create, or transaction_requests:approve.")
     print("Paste that API key below. It stays in memory here, never in the website or a file.\n")

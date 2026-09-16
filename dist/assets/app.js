@@ -378,7 +378,7 @@
       const {SignClient}=await loadWalletLibraries();
       const client=await SignClient.init({
         projectId:WALLETCONNECT_PROJECT_ID,
-        metadata:{name:'XTM Market',description:'Buy and sell goods with Tari on Ootle',url:location.origin,icons:[]}
+        metadata:{name:'Tari Market',description:'Buy and sell goods with Tari on Ootle',url:location.origin,icons:[]}
       });
       client.on('session_delete',()=>{walletConnection={connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,client,capabilities:null};renderWalletState();renderSellerOrders()});
       walletConnection.client=client;
@@ -1115,6 +1115,6 @@
       try{void Promise.resolve(modelContext.registerTool({name:'quote_listing',title:'Quote listing',description:'Read the fixed XTM price and live USD reference for one marketplace listing.',inputSchema:{type:'object',properties:{listing_id:{type:'number'}},required:['listing_id'],additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input.listing_id!=='number')throw new Error('listing_id must be a number');const item=listings.find(x=>x.id===input.listing_id);if(!item)throw new Error('Listing not found');return{listing_id:item.id,listing:item.name,...values(item)}}})).catch(()=>{})}catch{}
     }
 
-    $('#testWalletBackup').onclick=async()=>{try{const test=await testWalletModule(),blob=new Blob([test.backup()],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='xtm-market-test-wallet-encrypted.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){$('#testWalletStatus').textContent=e.message}};
+    $('#testWalletBackup').onclick=async()=>{try{const test=await testWalletModule(),blob=new Blob([test.backup()],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tari-market-test-wallet-encrypted.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){$('#testWalletStatus').textContent=e.message}};
     $('#testWalletRestore').onclick=()=>$('#testWalletBackupFile').click();
     $('#testWalletBackupFile').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>100000)throw new Error('Backup is too large.');(await testWalletModule()).restore(await file.text());rememberWalletPreference('testnet');renderWalletConnectionChoice();$('#testWalletStatus').textContent='Backup restored. Enter its password to unlock.'}catch(e){$('#testWalletStatus').textContent=e.message}finally{event.target.value=''}};

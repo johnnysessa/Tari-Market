@@ -1,4 +1,4 @@
-/* XTM Market local walletd transport. The wallet API key never enters this page. */
+/* Tari Market local walletd transport. The wallet API key never enters this page. */
 (() => {
   'use strict';
   const available = location.origin === 'http://localhost:5180';

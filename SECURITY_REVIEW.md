@@ -1,10 +1,10 @@
-# XTM Market — public security summary
+# Tari Market — public security summary
 
 Updated September 15, 2026. Contract source: **v0.11.0**. Website: **version 78**.
 
 ## Current status
 
-XTM Market is open for **Esmeralda testnet trials using test funds and test listings**. This summary describes implemented protections, recorded checks, and remaining limitations. It is not an independent audit, production certification, or a guarantee against attacks.
+Tari Market is open for **Esmeralda testnet trials using test funds and test listings**. This summary describes implemented protections, recorded checks, and remaining limitations. It is not an independent audit, production certification, or a guarantee against attacks.
 
 The v0.11.0 template has been published and a new marketplace component instantiated. Accepted wallet transaction exports and a live indexer response confirmed the expected template, component configuration, application owner signing key, resource, platform address, and state layout. The indexer reported `verified: true`, and the component has native `OwnerRule::None`.
 

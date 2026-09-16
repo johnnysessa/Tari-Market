@@ -30,7 +30,7 @@ jobs:
           node tests/listing-management.cjs
           python scripts/package-local-wallet.py
           test "$(git hash-object dist/assets/test-wallet/wallet.js)" = "8746c31b0dbbfe3ba80633f3ac5c81eeb2aa1f22"
-          test "$(git hash-object dist/downloads/xtm-market-local.zip)" = "24c66bd5e0a4e0a24e67f0dadf0e31a0d8e0965d"
+          test "$(git hash-object dist/downloads/xtm-market-local.zip)" = "cef2f4d3b10da12c586630bf90fb3b9fe6269abe"
       - name: Commit verified generated assets
         run: |
           git config user.name "github-actions[bot]"
