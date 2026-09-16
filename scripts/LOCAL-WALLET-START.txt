@@ -34,7 +34,11 @@ Python 3.9 or newer must already be installed (check: python3 --version).
 4. OPEN AND CONNECT
 Open http://localhost:5180 in your browser.
 Click Connect Tari wallet, choose Asset Vault / local test launcher,
-then Connect wallet.
+then Connect wallet once. This browser remembers that account and reconnects
+automatically on later visits and after temporary connection loss.
+Disconnect disables automatic reconnect. Changing accounts requires Connect again.
+Keep the launcher running; after restarting it, enter its limited API key again.
+The remembered account is only an address, never an API key or signing key.
 
 5. TEST A LISTING
 Choose List an item. Use a test product and your connected wallet address.

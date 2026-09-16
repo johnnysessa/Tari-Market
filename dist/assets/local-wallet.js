@@ -3,6 +3,25 @@
   'use strict';
   const available = location.origin === 'http://localhost:5180';
   let session = '', generation = 0;
+  const reconnectKey = 'xtm-market-local-reconnect-v1';
+  let remembered;
+  function rememberedAccount() {
+    if (!available) return '';
+    if (remembered !== undefined) return remembered;
+    try { const value = localStorage.getItem(reconnectKey) || ''; return /^component_[0-9a-f]{64}$/i.test(value) ? value : ''; } catch { return ''; }
+  }
+  function remember(account) {
+    if (!available || !/^component_[0-9a-f]{64}$/i.test(account)) return;
+    remembered = account;
+    try { localStorage.setItem(reconnectKey, account); } catch {}
+  }
+  function forget() {
+    remembered = '';
+    try { localStorage.removeItem(reconnectKey); } catch {}
+  }
+  window.addEventListener('storage', event => {
+    if (event.key === reconnectKey || event.key === null) { remembered = undefined; generation++; }
+  });
   const pendingKey = 'xtm-market-local-approval';
   function notice(id, message = 'Review and approve this transaction in Asset Vault.') {
     const box = document.querySelector('#localApprovalNotice');
@@ -11,7 +30,7 @@
     box.hidden = !id;
     box.querySelector('span').textContent = id ? `Request #${id}: ${message}` : '';
   }
-  async function rpc(method, params = {}) {
+  async function rpc(method, params = {}, retrySession = true) {
     if (!available) throw new Error('Download and run the local launcher, then open http://localhost:5180.');
     if (!session) {
       const response = await fetch('/local-wallet/session', {headers: {'X-XTM-Local': '1'}, cache: 'no-store', signal: AbortSignal.timeout(5000)});
@@ -22,6 +41,12 @@
       method: 'POST', headers: {'Content-Type': 'application/json', 'X-XTM-Local': '1', 'X-XTM-Session': session},
       body: JSON.stringify({method, params}), cache: 'no-store', signal: AbortSignal.timeout(60000),
     });
+    // A restarted launcher has a new session. Retry ONLY reads, never an
+    // approval lookup (which can submit an approved request) or a write.
+    if (response.status === 403 && retrySession && ['tari_getWalletInfo', 'tari_getDefaultAccount', 'tari_getTransactionResult'].includes(method)) {
+      session = '';
+      return rpc(method, params, false);
+    }
     const payload = await response.json();
     if (!response.ok || payload.error) throw new Error(payload.error || 'The local wallet request failed.');
     return payload.result;
@@ -65,5 +90,6 @@
       throw error;
     }
   }
-  window.xtmLocalWallet = Object.freeze({available, request, disconnect() {generation++; session = '';}});
+  window.xtmLocalWallet = Object.freeze({available, request, remember, rememberedAccount, forget,
+    disconnect() {generation++; session = ''; forget();}});
 })();

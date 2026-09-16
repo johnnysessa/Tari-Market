@@ -21,7 +21,7 @@ check(()=>assert(rust.includes('.with_owner_rule(OwnerRule::None)')));
 check(()=>{const fee=rust.slice(rust.indexOf('pub fn pay_marketplace_fee'),rust.indexOf('pub fn get_platform_payment_address'));assert(!fee.includes('escrow_vault'));assert(fee.includes('CallerContext::transaction_signer_public_key()'));assert(fee.includes('Fee already paid'));});
 check(()=>{const settle=rust.slice(rust.indexOf('fn settle_order'),rust.indexOf('pub fn pay_marketplace_fee'));assert(settle.indexOf('order.settled = true')<settle.indexOf('escrow_vault.withdraw'));assert(!settle.includes('platform_payment_address'));});
 check(()=>assert(!/<script>([\s\S]*?)<\/script>/.test(html)));
-check(()=>assert(html.includes("script-src 'self';")&&!html.includes("script-src 'unsafe-inline'")));
+check(()=>assert(html.includes("script-src 'self' 'wasm-unsafe-eval';")&&!html.includes("script-src 'unsafe-inline'")));
 for(const name of ['app.js','tari-connector.js'])check(()=>{const hash=crypto.createHash('sha384').update(fs.readFileSync('dist/assets/'+name)).digest('base64');assert(html.includes('src="assets/'+name+'" integrity="sha384-'+hash+'"'));});
 const roles=vm.createContext({walletConnection:{connected:true,accountAddress:'admin'},MARKET_OWNER_ACCOUNT:'owner',MARKET_COMPONENT_ADDRESS:'current',Date});
 vm.runInContext(app.slice(app.indexOf('    let adminRoles='),app.indexOf('    function renderAdminManagement')),roles);
@@ -53,10 +53,10 @@ check(()=>assert.equal(usernameContext.sellerIdentity({chainId:1,paymentAddress:
 async function walletRoutingTest(){
   for(const [available,choice,expected] of [[false,'walletconnect','walletconnect'],[true,'provider','provider'],[true,'walletconnect','walletconnect']]){
     let route='',pairing='';const nodes={};const provider={isAvailable:available,isEmbedded:available,info:{rdns:'mw.tari.universe'},request:async()=>{assert(available);route='provider';return['account']}};
-    const context=vm.createContext({window:{tari:provider,tariUniverse:provider},walletConnection:{connected:false},$:id=>nodes[id]??(nodes[id]={value:choice,classList:{add(){},remove(){}}}),getWalletClient:async()=>({session:{getAll:()=>[]},connect:async()=>{route='walletconnect';return{uri:'wc:test',approval:async()=>({})}}}),WALLETCONNECT_CHAIN:'tari:38',showPairingUri:async uri=>{pairing=uri},finishWalletSession:async()=>{},finishWindowTari:async()=>{},renderWalletConnectionChoice:()=>{}});
+    const context=vm.createContext({localReconnectGeneration:0,rememberWalletPreference(){},window:{tari:provider,tariUniverse:provider},walletConnection:{connected:false},$:id=>nodes[id]??(nodes[id]={value:choice,classList:{add(){},remove(){}}}),getWalletClient:async()=>({session:{getAll:()=>[]},connect:async()=>{route='walletconnect';return{uri:'wc:test',approval:async()=>({})}}}),WALLETCONNECT_CHAIN:'tari:38',showPairingUri:async uri=>{pairing=uri},finishWalletSession:async()=>{},finishWindowTari:async()=>{},renderWalletConnectionChoice:()=>{}});
     vm.runInContext(line('hasAvailableTariProvider')+'\n'+app.slice(app.indexOf('    async function connectWallet('),app.indexOf('    async function disconnectWallet(')),context);
     await context.connectWallet({preventDefault(){}});assert.equal(route,expected);assert.equal(pairing,expected==='walletconnect'?'wc:test':'');checks+=2;
   }
-  const context=vm.createContext({window:{tari:{request(){}}}});vm.runInContext(line('hasAvailableTariProvider'),context);check(()=>assert.equal(context.hasAvailableTariProvider(),true));context.window.tari.isAvailable=false;check(()=>assert.equal(context.hasAvailableTariProvider(),false));
+  const context=vm.createContext({localReconnectGeneration:0,rememberWalletPreference(){},window:{tari:{request(){}}}});vm.runInContext(line('hasAvailableTariProvider'),context);check(()=>assert.equal(context.hasAvailableTariProvider(),true));context.window.tari.isAvailable=false;check(()=>assert.equal(context.hasAvailableTariProvider(),false));
 }
 Promise.all([bridgeTest(),walletRoutingTest()]).then(()=>console.log(`${checks} security regression checks passed.`)).catch(error=>{console.error(error);process.exitCode=1});

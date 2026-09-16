@@ -109,6 +109,7 @@
       if(!value||typeof value!=='object')return value;
       if(value['@cbor']==='tag'){const decoded=decodeChainValue(value.value),prefix={128:'component_',131:'resource_',132:'vault_'}[value.tag];return prefix&&typeof decoded==='string'&&/^[0-9a-f]{64}$/i.test(decoded)?prefix+decoded.toLowerCase():decoded}
       if(value['@cbor']==='bytes')return value.hex;
+      if(value['@cbor']==='map'&&Array.isArray(value.entries))return Object.fromEntries(value.entries.map(([key,item])=>[String(decodeChainValue(key)),decodeChainValue(item)]));
       if(Array.isArray(value))return value.map(decodeChainValue);
       return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,decodeChainValue(item)]));
     }
@@ -131,7 +132,7 @@
     const SELLER_USERNAMES_READY=true;
     let sellerUsernames=new Map(),usernameOwners=new Map(),usernameListings=new Map(),usernameRegistryReady=false;
     function normalizeSellerUsername(value){const name=String(value||'').trim().toLowerCase();return /^[a-z0-9_]{3,24}$/.test(name)&&!['admin','administrator','owner','support','xtm_market','tari','ootle'].includes(name)?name:''}
-    function sellerIdentity(item){const row=usernameListings.get(String(item.chainId));return row&&row.address===String(item.paymentAddress||'').toLowerCase()?'@'+row.name:shortAddress(item.paymentAddress||'Seller wallet pending')}
+    function sellerIdentity(item){const row=usernameListings.get(String(item.chainId));return row&&row.address===String(item.paymentAddress||'').toLowerCase()?'@'+(row.name==='taritom'?'TariTom':row.name):shortAddress(item.paymentAddress||'Seller wallet pending')}
     function refreshUsernameRegistry(state){
       sellerUsernames=new Map();usernameOwners=new Map();usernameListings=new Map();usernameRegistryReady=false;
       if(!SELLER_USERNAMES_READY||!Array.isArray(state)||state.length!==15||!state[13]||!state[14])return;
@@ -257,27 +258,113 @@
       })
     }
     async function prepareListingImages(files){const prepared=[];for(const file of files)prepared.push(await prepareListingImage(file));return prepared.filter(Boolean)}
+    const walletPreferenceKey='xtm-market-wallet-preference-v1';
+    let browserUnlockPending=false;
+    function savedBrowserWallet(){try{const value=JSON.parse(localStorage.getItem('xtm-market-esmeralda-wallet-v1')||'null');return value?.version===1&&['salt','iv','cipher'].every(key=>typeof value[key]==='string'&&value[key].length>0)}catch{return false}}
+    function walletPreference(){try{return localStorage.getItem(walletPreferenceKey)||''}catch{return ''}}
+    function rememberWalletPreference(method){browserUnlockPending=false;try{localStorage.setItem(walletPreferenceKey,method)}catch{}}
+    function defaultWalletMethod(){
+      if(walletConnection.connected)return walletConnection.transport==='testnet'?'testnet':walletConnection.transport==='window.tari'?'provider':walletConnection.transport==='local'?'local':'walletconnect';
+      if(window.xtmLocalWallet?.available)return 'local';
+      const preference=walletPreference();
+      if(savedBrowserWallet()&&(!preference||preference==='testnet'||preference==='disconnected'))return 'testnet';
+      if(preference==='walletconnect')return 'walletconnect';
+      return hasAvailableTariProvider()?'provider':'testnet';
+    }
+    function openWalletConnection(method=defaultWalletMethod()){
+      browserUnlockPending=false;
+      $('#walletConnectionMethod').value=method;
+      renderWalletConnectionChoice();
+      $('#disconnectWallet').hidden=!walletConnection.connected&&!window.xtmLocalWallet?.rememberedAccount?.();
+      $('#connectWallet').hidden=walletConnection.connected;
+      $('#walletError').classList.remove('show');
+      if(!$('#walletDialog').open)$('#walletDialog').showModal();
+      if(method==='testnet'&&!walletConnection.connected)$('#testWalletPassword').focus({preventScroll:true});
+    }
+    function promptSavedBrowserWallet(){
+      if(!browserUnlockPending||walletConnection.connected||document.hidden||document.querySelector('dialog[open]'))return;
+      openWalletConnection('testnet');
+    }
+    let testWalletModulePromise;
+    function testWalletModule(){return testWalletModulePromise||(testWalletModulePromise=import('./test-wallet/wallet.js').catch(error=>{testWalletModulePromise=null;throw error}))}
+    async function finishTestWallet(){
+      if(!savedBrowserWallet()&&!$('#testWalletConsent').checked)throw new Error('Confirm that you want to create a test-only wallet and request test funds.');
+      const wasSaved=savedBrowserWallet();
+      const password=$('#testWalletPassword').value;$('#testWalletPassword').value='';
+      const test=await testWalletModule();
+      $('#testWalletStatus').textContent='Unlocking your encrypted test wallet…';
+      await test.unlock(password);
+      rememberWalletPreference('testnet');
+      let account=await test.connectAccount($('#testWalletAccount').value);
+      if(!account.account){if(wasSaved&&!window.confirm('This browser wallet has not completed setup. Request 1,000 test Tari (less up to 0.3 test Tari in fees), or check its pending funding transaction?'))throw new Error('Test funding cancelled. Your wallet remains saved.');$('#testWalletStatus').textContent='Creating your Esmeralda account and requesting 1,000 test Tari…';account=await test.fundNewWallet();}
+      $('#testWalletReceiveAddress').value=account.address;$('#testWalletReceive').hidden=false;
+      if(!account.account)throw new Error('Your account is not confirmed yet. Unlock again to check funding.');
+      walletConnection={...walletConnection,connected:true,transport:'testnet',accountAddress:account.account,walletAddress:account.address,network:'esmeralda',networkByte:38,account:{component_address:account.account,owner_key_id:'browser-testnet'},session:null,capabilities:null};
+      $('#walletDialog').close();renderWalletState();renderSellerOrders();refreshTrustScores().catch(()=>{});toast('Esmeralda test wallet connected');
+      test.balance().then(amount=>{$('#testWalletStatus').textContent=`Balance: ${amount.toLocaleString()} test Tari`}).catch(()=>{$('#testWalletStatus').textContent='Connected to Esmeralda. Balance is temporarily unavailable.'});
+    }
     function hasAvailableTariProvider(){const provider=window.tari;return typeof provider?.request==='function'&&provider.isAvailable!==false&&(!(provider===window.tariUniverse||provider.info?.rdns==='mw.tari.universe')||provider.isEmbedded===true)}
     function renderWalletConnectionChoice(){
       const select=$('#walletConnectionMethod'),available=hasAvailableTariProvider();
       select.querySelector('option[value="provider"]').disabled=!available;
       if(!available&&select.value==='provider')select.value=window.xtmLocalWallet?.available?'local':'walletconnect';
       const embedded=select.value==='provider',local=select.value==='local';
+      const saved=savedBrowserWallet();
+      $('#walletDialogTitle').textContent=select.value==='testnet'?(walletConnection.connected?'Browser test wallet':saved?'Unlock your browser test wallet':'Create a browser test wallet'):'Connect Tari wallet';
+      $('#testWalletConsentLabel').hidden=saved;
+      $('#testWalletPassword').autocomplete=saved?'current-password':'new-password';
+      if(!$('#connectWallet').disabled)$('#connectWallet').textContent=select.value==='testnet'?(saved?'Unlock wallet':'Create wallet & get test funds'):'Connect wallet';
+      $('#testWalletInstructions').hidden=select.value!=='testnet';
+      $('#testWalletUnlockFields').hidden=walletConnection.connected;
+      $('#testWalletRestore').disabled=walletConnection.connected||$('#connectWallet').disabled;
+      $('#testWalletPassword').disabled=select.value!=='testnet'||walletConnection.connected;
       $('#walletConnectInstructions').hidden=select.value!=='walletconnect'||walletConnection.connected;
       $('#localWalletInstructions').hidden=select.value!=='local'||walletConnection.connected;
       $('#localLauncherSetup').hidden=Boolean(window.xtmLocalWallet?.available);
       $('#localLauncherReady').hidden=!window.xtmLocalWallet?.available;
-      $('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='local'?'local Asset Vault':walletConnection.transport==='window.tari'?'Tari browser wallet':'WalletConnect'}.`:embedded?'Approve access in your Tari Universe or browser wallet.':local?'Use Asset Vault on this Mac with the local test launcher.':'Use a wallet that supports Tari Esmeralda WalletConnect sessions.';
+      $('#walletDialogSubtitle').textContent=walletConnection.connected?`Connected through ${walletConnection.transport==='testnet'?'Esmeralda browser test wallet':walletConnection.transport==='local'?'local Asset Vault':walletConnection.transport==='window.tari'?'Tari browser wallet':'WalletConnect'}.`:select.value==='testnet'?(saved?'Your saved wallet was found. Enter its password to unlock and reconnect.':'Create your wallet here and receive test funds. No recovery phrase required.'):embedded?'Approve access in your Tari Universe or browser wallet.':local?'Use Asset Vault on this Mac with the local test launcher.':'Use a wallet that supports Tari Esmeralda WalletConnect sessions.';
       select.disabled=walletConnection.connected||$('#connectWallet').disabled;
     }
-    async function finishLocalWallet(){
+    let localReconnectBusy=false,localReconnectGeneration=0;
+    async function readLocalWalletAccount(){
       if(!window.xtmLocalWallet?.available)throw new Error('Download and run the local launcher below, then open http://localhost:5180.');
       const info=await window.xtmLocalWallet.request('tari_getWalletInfo');
       if(info.network_byte!==38||String(info.network).toLowerCase()!=='esmeralda')throw new Error('Switch Asset Vault to Esmeralda.');
       const response=await window.xtmLocalWallet.request('tari_getDefaultAccount'),account=response?.account||response;
       if(!/^component_[0-9a-f]{64}$/i.test(account?.component_address||'')||!account.owner_key_id)throw new Error('Asset Vault did not return a default signing account.');
+      return account;
+    }
+    function applyLocalWalletAccount(account){
       walletConnection={...walletConnection,connected:true,transport:'local',accountAddress:account.component_address,walletAddress:'',network:'esmeralda',networkByte:38,account,session:null,capabilities:null};
-      $('#pairingPanel').classList.remove('show');$('#walletDialog').close();await refreshTrustScores();renderWalletState();renderSellerOrders();toast('Asset Vault connected. Approve transactions on its Requests page.');
+      $('#localReconnectStatus').textContent='Connected to Asset Vault. This browser will reconnect to the same account automatically.';
+      renderWalletState();renderSellerOrders();refreshTrustScores().catch(()=>{});
+    }
+    async function finishLocalWallet(){
+      const account=await readLocalWalletAccount();
+      window.xtmLocalWallet.remember(account.component_address);
+      applyLocalWalletAccount(account);
+      $('#pairingPanel').classList.remove('show');$('#walletDialog').close();toast('Asset Vault connected. Automatic reconnect is enabled.');
+    }
+    async function reconnectLocalWallet(){
+      const bridge=window.xtmLocalWallet,expected=bridge?.rememberedAccount();
+      if(!bridge?.available||!expected||localReconnectBusy||document.hidden||transactionBusy||purchaseBusy||$('#connectWallet').disabled||(walletConnection.connected&&walletConnection.transport!=='local'))return;
+      const generation=localReconnectGeneration;
+      localReconnectBusy=true;
+      const current=()=>generation===localReconnectGeneration&&bridge.rememberedAccount()===expected&&!transactionBusy&&!purchaseBusy&&!$('#connectWallet').disabled&&(!walletConnection.connected||walletConnection.transport==='local');
+      const unavailable=message=>{
+        if(walletConnection.transport==='local'){walletConnection={...walletConnection,connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,capabilities:null};renderWalletState();renderSellerOrders();}
+        $('#localReconnectStatus').textContent=message;
+      };
+      try{
+        const account=await readLocalWalletAccount();
+        if(!current())return;
+        if(account.component_address.toLowerCase()!==expected.toLowerCase()){
+          bridge.forget();unavailable('Asset Vault switched accounts. Select Connect wallet to authorize this account.');return;
+        }
+        if(!walletConnection.connected)applyLocalWalletAccount(account);
+      }catch(error){
+        if(current())unavailable('Local wallet unavailable. Keep the launcher and Asset Vault running; reconnection will retry automatically. If access expired, restart the launcher with a valid API key.');
+      }finally{localReconnectBusy=false}
     }
     let walletLibrariesPromise;
     function loadWalletLibraries(){
@@ -296,6 +383,7 @@
       return client
     }
     async function walletRequest(method,params={}){
+      if(walletConnection.transport==='testnet')return (await testWalletModule()).request(method,params);
       if(walletConnection.transport==='local')return window.xtmLocalWallet.request(method,params);
       if(walletConnection.transport==='window.tari'){
         if(!hasAvailableTariProvider())throw new Error('The Tari wallet provider is no longer available.');
@@ -333,13 +421,22 @@
       $('#pairingPanel').classList.add('show')
     }
     async function restoreWalletSession(){
-      if(window.xtmLocalWallet?.available)return; // Local credentials never restore or connect silently.
-      if(hasAvailableTariProvider()){
-        try{const accounts=await window.tari.request({method:'tari_getAccounts'});if(accounts?.length){await finishWindowTari(accounts);return}}catch(error){console.warn('window.tari session restore failed',error)}
+      if(window.xtmLocalWallet?.available){
+        reconnectLocalWallet();setInterval(reconnectLocalWallet,15000);
+        window.addEventListener('focus',reconnectLocalWallet);
+        document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconnectLocalWallet()});
+        return;
+      }
+      const preference=walletPreference();
+      if(preference==='disconnected')return;
+      if(savedBrowserWallet()&&(!preference||preference==='testnet')){browserUnlockPending=true;promptSavedBrowserWallet();return;}
+      const restoreGeneration=localReconnectGeneration;
+      if(hasAvailableTariProvider()&&preference!=='walletconnect'){
+        try{const accounts=await window.tari.request({method:'tari_getAccounts'});if(accounts?.length){if(restoreGeneration!==localReconnectGeneration)return;await finishWindowTari(accounts);return}}catch(error){console.warn('window.tari session restore failed',error)}
       }
       try{
         const client=await getWalletClient(),sessions=client.session.getAll(),session=sessions.find(candidate=>candidate.namespaces?.tari);
-        if(session)await finishWalletSession(session,client)
+        if(session&&restoreGeneration===localReconnectGeneration)await finishWalletSession(session,client)
       }catch(error){console.warn('WalletConnect session restore failed',error)}
     }
     function manifestText(value){return JSON.stringify(String(value))}
@@ -359,7 +456,7 @@
     function cborAddress(address,tag){const hex=String(address).replace(/^[^_]+_/,'');if(!/^[0-9a-f]{64}$/i.test(hex))throw new Error('The Tari address is invalid.');const bytes=hex.match(/../g).map(part=>parseInt(part,16));return[...cborHead(6,tag),...cborBytes(bytes)]}
     function literal(bytes){return{Literal:bytes.map(byte=>byte.toString(16).padStart(2,'0')).join('')}}
     function componentCall(address,method,args){return{CallMethod:{call:{Address:address},method,args}}}
-    function feeInstructions(accountAddress){return[componentCall(accountAddress,'pay_fee',[literal(cborHead(0,MAX_TRANSACTION_FEE))])]}
+    function feeInstructions(accountAddress){return[componentCall(accountAddress,'pay_fee',[literal(cborHead(0,walletConnection.transport==='testnet'?300000:MAX_TRANSACTION_FEE))])]}
     async function networkState(){
       const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
       try{const response=await fetch(INDEXER_URL+'network',{signal:controller.signal,headers:{Accept:'application/json'}});if(!response.ok)throw new Error();const data=await response.json(),epoch=Number(data.epoch);if(!Number.isSafeInteger(epoch)||epoch<0)throw new Error();return data}
@@ -390,10 +487,11 @@
           const previous=await walletRequest('tari_getTransactionResult',identity.transport==='window.tari'?{transactionId:prior}:{transaction_id:prior});sameWallet();
           const outcome=transactionOutcome(previous);
           if(outcome==='pending')throw new Error('Your previous transaction is still unconfirmed. Check its status in your wallet before retrying.');
+          if(identity.transport==='testnet')await (await testWalletModule()).acknowledge(prior);
           forget();
           if(outcome==='accepted')throw new Error('Your previous transaction completed. Refresh your orders before starting another transaction.');
         }
-        if(!window.confirm(summary+'\n\nMaximum network fee: 0.005 XTM\n\nContinue in your connected Tari wallet?'))throw new Error('Payment cancelled.');
+        if(!window.confirm(summary+'\n\nMaximum network fee: '+(identity.transport==='testnet'?'0.3 test Tari':'0.005 XTM')+'\n\n'+(identity.transport==='testnet'?'Sign and submit with your browser test wallet?':'Continue in your connected Tari wallet?')))throw new Error('Payment cancelled.');
         sameWallet();
         const currentAccount=firstAddress(await walletRequest(identity.transport==='window.tari'?'tari_getAccounts':'tari_getDefaultAccount',{}));sameWallet();
         if(String(currentAccount).toLowerCase()!==identity.account.toLowerCase())throw new Error('The wallet account changed. Reconnect before submitting.');
@@ -420,8 +518,8 @@
           await new Promise(resolve=>setTimeout(resolve,2000));sameWallet();
           const result=await walletRequest('tari_getTransactionResult',identity.transport==='window.tari'?{transactionId}:{transaction_id:transactionId});sameWallet();
           const outcome=transactionOutcome(result);
-          if(outcome==='rejected'){forget();throw new Error('Ootle rejected the transaction.')}
-          if(outcome==='accepted'){forget();return {transactionId,result}}
+          if(outcome==='rejected'){if(identity.transport==='testnet')await (await testWalletModule()).acknowledge(transactionId);forget();throw new Error('Ootle rejected the transaction.')}
+          if(outcome==='accepted'){if(identity.transport==='testnet')await (await testWalletModule()).acknowledge(transactionId);forget();return {transactionId,result}}
         }
         throw new Error('Transaction status is unconfirmed. Check your wallet before retrying; it may still complete.');
       }finally{transactionBusy=false}
@@ -438,11 +536,12 @@
       renderAdminManagement();
       renderPaymentCases();if(walletConnection.connected&&['cases','moderation'].includes(pageFromHash()))refreshPaymentCases();
       const connected=walletConnection.connected;
+      $('#checkoutFeeCap').textContent=walletConnection.transport==='testnet'?'Separate · up to 0.3 test Tari':'Separate · up to 0.005 XTM';
       const escrowReady=newPurchasesReady();
       const owner=isMarketplaceAdmin();$('#moderationTab').hidden=!owner;if(!owner){$('#moderationList').innerHTML='';$('#paymentOwnerList').innerHTML='';$('#adminPaymentSync').textContent='';if(paymentAction&&['refund','release'].includes(paymentAction.action)){$('#paymentActionDialog').close();paymentAction=null}}if(!owner&&pageFromHash()==='moderation')setPage('market',false);
       $('#escrowBannerText').textContent=escrowReady?'XTM enters escrow when the purchase completes and stays locked until release or refund. It releases on buyer confirmation or an eligible seller claim after the 14-day purchase window; disputes require an owner decision.':'Purchases will reopen after the new Ootle escrow component is deployed.';
       $('#walletButton').classList.toggle('connected',connected);
-      $('#walletButton').textContent=connected?shortAddress(walletConnection.accountAddress):'Connect Tari wallet';
+      $('#walletButton').textContent=connected?shortAddress(walletConnection.accountAddress):savedBrowserWallet()&&defaultWalletMethod()==='testnet'?'Unlock browser wallet':'Connect Tari wallet';
       $('#walletState').classList.toggle('connected',connected);
       $('#walletDot').classList.toggle('ready',connected);
       $('#walletCheckoutStatus').textContent=connected?`Connected · ${shortAddress(walletConnection.accountAddress)}`:'Tari wallet not connected';
@@ -455,10 +554,13 @@
       }
     }
     async function connectWallet(event){
-      event.preventDefault();
+      event.preventDefault();localReconnectGeneration++;
+      rememberWalletPreference($('#walletConnectionMethod').value);
+      if(window.xtmLocalWallet?.available&&$('#walletConnectionMethod').value!=='local')window.xtmLocalWallet.forget();
       const button=$('#connectWallet'),errorBox=$('#walletError');
       errorBox.classList.remove('show');button.disabled=true;button.textContent='Connecting…';$('#walletConnectionMethod').disabled=true;
       try{
+        if($('#walletConnectionMethod').value==='testnet'){await finishTestWallet();return}
         if($('#walletConnectionMethod').value==='local'){await finishLocalWallet();return}
         if($('#walletConnectionMethod').value==='provider'){if(!hasAvailableTariProvider())throw new Error('Tari Universe is unavailable in this tab. Choose WalletConnect or the local Asset Vault launcher.');const accounts=await window.tari.request({method:'tari_requestAccounts'});await finishWindowTari(accounts);return}
         const client=await getWalletClient(),existing=client.session.getAll().find(candidate=>candidate.namespaces?.tari);
@@ -469,14 +571,17 @@
         const session=await approval();
         await finishWalletSession(session,client)
       }catch(error){
+        if($('#walletConnectionMethod').value==='testnet'){try{(await testWalletModule()).lock()}catch{}}
         walletConnection={...walletConnection,connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,capabilities:null};
         errorBox.textContent=error.message||'The wallet connection was not approved.';
         errorBox.classList.add('show')
       }finally{button.disabled=false;button.textContent='Connect wallet';renderWalletConnectionChoice()}
     }
     async function disconnectWallet(){
+      localReconnectGeneration++;window.xtmLocalWallet?.forget();rememberWalletPreference('disconnected');
+      $('#localReconnectStatus').textContent='Automatic reconnect is off. Select Connect wallet to enable it again.';
       const {client,session,transport}=walletConnection;
-      try{if(transport==='local')window.xtmLocalWallet.disconnect();else if(transport==='window.tari'&&window.tari?.request)await window.tari.request({method:'tari_disconnect'});else if(client&&session)await client.disconnect({topic:session.topic,reason:{code:6000,message:'User disconnected'}})}catch{}
+      try{if(transport==='testnet')(await testWalletModule()).lock();else if(transport==='local')window.xtmLocalWallet.disconnect();else if(transport==='window.tari'&&window.tari?.request)await window.tari.request({method:'tari_disconnect'});else if(client&&session)await client.disconnect({topic:session.topic,reason:{code:6000,message:'User disconnected'}})}catch{}
       walletConnection={connected:false,transport:'',accountAddress:'',walletAddress:'',network:'',networkByte:null,account:null,session:null,client,capabilities:null};
       $('#pairingPanel').classList.remove('show');$('#pairingUri').value='';$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false;$('#walletDialog').close();renderWalletState();renderSellerOrders();toast('Wallet disconnected')
     }
@@ -832,7 +937,7 @@
     document.querySelectorAll('[data-page]').forEach(button=>button.onclick=()=>setPage(button.dataset.page));
     window.addEventListener('hashchange',()=>setPage(pageFromHash(),false));
     const dialog=$('#listingDialog');$('#listButton').onclick=()=>{const address=$('#listingForm').elements.paymentAddress;address.value=walletConnection.connected?walletConnection.accountAddress:'';address.readOnly=true;const known=[...usernameListings.values()].find(row=>row.address===String(walletConnection.accountAddress||'').toLowerCase());$('#sellerUsername').value=known?.name||'';updateUsernameStatus();dialog.showModal()};$('#closeDialog').onclick=$('#cancelDialog').onclick=()=>dialog.close();
-    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>{$('#walletConnectionMethod').value=walletConnection.connected?(walletConnection.transport==='window.tari'?'provider':walletConnection.transport==='local'?'local':'walletconnect'):hasAvailableTariProvider()?'provider':window.xtmLocalWallet?.available?'local':'walletconnect';renderWalletConnectionChoice();if(walletConnection.connected){$('#disconnectWallet').hidden=false;$('#connectWallet').hidden=true}else{$('#disconnectWallet').hidden=true;$('#connectWallet').hidden=false}$('#walletError').classList.remove('show');walletDialog.showModal()};$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
+    const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>openWalletConnection();$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{browserUnlockPending=false;$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
     $('#closeProfile').onclick=()=>$('#profileDialog').close();
     $('#closeProduct').onclick=()=>$('#productDialog').close();
     function openReceiptReview(orderId){$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}
@@ -847,9 +952,14 @@
     $('#copyAddress').onclick=async()=>{const address=selected?.paymentAddress;if(!address)return;try{await navigator.clipboard.writeText(address);toast('Payment address copied')}catch{toast('Could not copy the address')}};
     $('#listingForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,d=new FormData(form),button=$('#publishListing'),errorBox=$('#listingError');errorBox.textContent='';if(!newPurchasesReady()){errorBox.textContent='Listing creation and username registration will reopen after the marketplace upgrade is activated.';return}if(!walletConnection.connected){dialog.close();$('#walletDialog').showModal();toast('Connect your Tari wallet before listing');return}button.disabled=true;button.textContent='Preparing listing…';try{const id=Date.now(),name=String(d.get('name')).trim(),description=String(d.get('description')).trim(),category=String(d.get('category')||''),price=Number(d.get('price')),shipping=Number(d.get('shipping')),stock=Number(d.get('stock')),paymentAddress=String(d.get('paymentAddress')).trim(),sellerUsername=normalizeSellerUsername(d.get('sellerUsername'));if(!sellerUsername)throw new Error('Choose a valid seller username.');if(paymentAddress.toLowerCase()!==walletConnection.accountAddress.toLowerCase())throw new Error('Use your connected Tari wallet as the payment address.');if(!CATEGORIES.includes(category))throw new Error('Choose a category for this item.');if(!/^component_[0-9a-f]{64}$/i.test(paymentAddress))throw new Error('Paste an Ootle Tari wallet address beginning with component_.');const images=await prepareListingImages(selectedListingFiles),deliveryPublicKey=await generateDeliveryKeyPair(id),usdCents=Math.max(1,Math.round((price+shipping)*xtmRate()*100)),instructions=[componentCall(MARKET_COMPONENT_ADDRESS,'create_listing',[literal(cborText(name)),literal(cborHead(0,usdCents)),literal(cborHead(0,atomicTari(price))),literal(cborHead(0,shipping>0?atomicTari(shipping):0)),literal(cborAddress(paymentAddress,128)),literal(cborText(deliveryPublicKey)),literal(cborHead(0,stock)),literal(cborText(sellerUsername))])];button.textContent='Waiting for wallet…';const receipt=await submitInstructions(instructions,`Publish as @${sellerUsername}: ${name} for ${xtm(price)} plus ${xtm(shipping)} shipping`),chainId=returnedListingId(receipt.result);if(!chainId)throw new Error('The listing transaction finalized, but its listing ID could not be read.');const listing={id,chainId,marketComponent:MARKET_COMPONENT_ADDRESS,name,description,price,shipping,stock,paymentAddress,deliveryPublicKey,category,images,image:images[0]||'',alt:name,glow:'rgba(104,240,197,.2)'};listings.unshift(listing);selectedSeller=null;selectedCategory='All';currentMarketPage=1;if(!saveListings()){listings.shift();return}form.reset();selectedListingFiles=[];renderListingPreviews();dialog.close();await refreshTrustScores();render();toast(`Listing published with ${images.length} photo${images.length===1?'':'s'}`)}catch(problem){errorBox.textContent=problem.message||'Could not publish this listing.'}finally{button.disabled=false;button.textContent='Publish listing'}};
     $('#sellerUsername').oninput=updateUsernameStatus;
+    document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',promptSavedBrowserWallet));
+    document.addEventListener('visibilitychange',promptSavedBrowserWallet);
     showLegalNotice();render();renderWalletState();setPage(pageFromHash(),false);refreshRates();refreshTrustScores();setInterval(refreshRates,60000);restoreWalletSession();
     const modelContext=document.modelContext;
     if(modelContext?.registerTool){
       try{void Promise.resolve(modelContext.registerTool({name:'quote_listing',title:'Quote listing',description:'Read the fixed XTM price and live USD reference for one marketplace listing.',inputSchema:{type:'object',properties:{listing_id:{type:'number'}},required:['listing_id'],additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input.listing_id!=='number')throw new Error('listing_id must be a number');const item=listings.find(x=>x.id===input.listing_id);if(!item)throw new Error('Listing not found');return{listing_id:item.id,listing:item.name,...values(item)}}})).catch(()=>{})}catch{}
     }
-  
+
+    $('#testWalletBackup').onclick=async()=>{try{const test=await testWalletModule(),blob=new Blob([test.backup()],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='xtm-market-test-wallet-encrypted.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){$('#testWalletStatus').textContent=e.message}};
+    $('#testWalletRestore').onclick=()=>$('#testWalletBackupFile').click();
+    $('#testWalletBackupFile').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>100000)throw new Error('Backup is too large.');(await testWalletModule()).restore(await file.text());rememberWalletPreference('testnet');renderWalletConnectionChoice();$('#testWalletStatus').textContent='Backup restored. Enter its password to unlock.'}catch(e){$('#testWalletStatus').textContent=e.message}finally{event.target.value=''}};

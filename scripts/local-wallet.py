@@ -266,7 +266,7 @@ def main():
         server = LocalServer(root, wallet)
     except (WalletError, OSError) as error:
         raise SystemExit(str(error)) from None
-    print("\nOpen " + ORIGIN + " and click Connect Tari wallet.")
+    print("\nOpen " + ORIGIN + ". Connect once; this browser reconnects to the same account on later visits.")
     print("Approve each transaction at http://localhost:5100/transaction-requests")
     print("Keep BOTH terminal windows running. Ctrl+C stops this launcher.\n")
     try:

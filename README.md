@@ -193,7 +193,7 @@ Admins can appoint or revoke other admins. The original owner is not a removable
 
 ## Wallet integration and security changes
 
-- Tari Universe/browser provider support and explicit WalletConnect selection remain. The public site defaults to WalletConnect again, with the local Asset Vault launcher optional. Inside the local launcher, local connection is selected; inside Universe, the browser provider is selected. Asset Vault v0.40.0 does not expose WalletConnect pairing. Local sessions require an explicit Connect action.
+- Tari Universe/browser provider support and explicit WalletConnect selection remain. The public site defaults to WalletConnect again, with the local Asset Vault launcher optional. Inside the local launcher, local connection is selected; inside Universe, the browser provider is selected. Asset Vault v0.40.0 does not expose WalletConnect pairing. Local sessions require one explicit Connect action per account; the same browser then reconnects to that account while the local launcher runs. Disconnect disables reconnect. Changing the default wallet account requires connecting again.
 - A locally bundled Tari Universe bridge restricted to the known `https://universe.tari.mw` parent origin and frame source, with request timeouts.
 - WalletConnect 2.23.7 and its seven-module static import graph vendored locally, with provenance hashes in `security/vendor-manifest.json`.
 - Esmeralda network-byte check, fresh wallet-account verification, account/session/provider checks, transaction and purchase locks, and tracking of unconfirmed transaction IDs before retry.
@@ -317,3 +317,70 @@ Compiled historical artifacts are preserved for provenance. Their presence is no
 ## License
 
 XTM Market is released under the [MIT License](LICENSE). Retain applicable third-party notices when redistributing vendored dependencies.
+
+## Browser test wallet (Esmeralda only)
+
+Choose **Connect Tari wallet → Browser test wallet · Esmeralda**. Create a password
+(at least 12 characters), acknowledge test-only use, and connect. The wallet creates
+keys locally, then requests the native faucet’s 1,000 test Tari grant (less the
+network fee, capped at 0.3 test Tari) after the explicit setup action. No recovery
+phrase is requested. Returning users
+unlock the same encrypted wallet. Download the encrypted backup from this panel;
+restore it in a browser without an existing XTM Market test wallet, using the same
+password. There is no server-side password reset. Browser data deletion without a
+backup loses access.
+
+All previous options remain: WalletConnect, Tari Universe/browser wallet, and the
+Asset Vault/local launcher. The browser wallet uses no SOOON backend or API keys.
+It follows the local-key/encrypted-storage pattern inspected on
+https://sooon.fun/wallet/ and is independently implemented with Tari's BSD-3-Clause
+SDK: https://github.com/tari-project/ootle.ts . SOOON's own repository was not
+identified during this implementation.
+
+Implementation: `wallet-browser/wallet.js`; pinned dependencies are recorded in
+`wallet-browser/package-lock.json`. Run `npm ci` and `npm run build` in that folder
+to rebuild `dist/assets/test-wallet/wallet.js`. WASM runs locally. Storage uses
+AES-256-GCM with a PBKDF2-SHA256 key (310,000 iterations), random salt and IV; secrets
+and passwords are not sent to the indexer. The wallet locks on disconnect/reload.
+Marketplace transactions require confirmation and successful dry-run, with a displayed
+maximum fee of 0.3 test Tari. Signed envelopes are saved encrypted before submission
+so network retries reuse the identical transaction. The indexer network must be
+Esmeralda (38); no mainnet mode is included. Native Esmeralda faucet funding is included. Signed funding requests are saved
+encrypted before submission, and pending transactions are resumed on unlock.
+Advanced account linking remains optional; ownership is checked against the wallet
+public key before connecting.
+New wallets automatically create an on-chain account through the native faucet.
+The account must be confirmed and ownership checked before it is shown connected.
+Existing unfunded browser wallets can complete funding on unlock. No fake balance
+is shown if the faucet is unavailable. The default connection method is the
+browser test wallet, while other existing methods remain available.
+
+Validation: `node tests/security.cjs`, `node tests/browser-test-wallet.mjs`,
+`node tests/browser-wallet-return.cjs`, and `node tests/browser-wallet-funding.mjs`.
+A live Esmeralda funding test confirmed an account with 999.997253 test Tari after fees.
+After edits to the marketplace scripts, run `python scripts/update-script-integrity.py`
+to refresh their required SRI hashes before publishing.
+
+### Local wallet automatic reconnect
+
+Download the updated local launcher and connect Asset Vault once at
+`http://localhost:5180`. Only the public account address is remembered in that
+browser. Later visits reconnect automatically, with read-only checks every 15
+seconds while the page is visible. A temporary wallet/launcher outage can recover
+without another Connect click. Restarting the launcher still requires entering
+its limited API key in Terminal; no credential is stored in browser storage or
+on disk. Disconnect disables reconnect, and switching to a different account
+requires a fresh Connect action. Reconnect never creates, approves, retries, or
+submits a transaction. Asset Vault's separate approval remains required.
+
+### Returning to the public site with a browser wallet
+
+The public site recognizes an encrypted browser-wallet record and prompts for its
+password on return, after any required legal notice is dismissed. A previously
+linked account is read from encrypted storage and reconnected after unlock; it
+does not need to be pasted again. No password or decrypted key is persisted.
+Cancel dismisses the prompt for that visit. Disconnect disables automatic prompts
+until the browser wallet is selected again. Explicitly choosing WalletConnect or
+Tari Universe preserves that choice instead. The local launcher retains its
+existing account reconnect flow. A new browser wallet still needs its own funded
+on-chain account for payments; no faucet or automatic transaction is added.
