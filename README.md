@@ -2,7 +2,7 @@
 
 # Tari Market
 
-Tari Market is an open-source marketplace prototype for Tari Ootle. Items and shipping are priced in XTM, with a live USD reference. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
+Tari Market is an open-source marketplace prototype for Tari Ootle. All current listings, shipping, escrow payments, marketplace fees and network fees use tTari on Esmeralda testnet. tTari has no monetary value; USD figures are illustrative and use the mainnet XTM reference price. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
 
 **[Open Tari Market](https://xtm-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
 
