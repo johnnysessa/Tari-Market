@@ -882,6 +882,19 @@
       const listing=Object.values(rows||{}).find(row=>Number(reviewField(row,0,'id'))===item.chainId);
       if(!listing||reviewField(listing,9,'active')!==true||Number(reviewField(listing,8,'inventory'))<1||String(reviewField(listing,1,'title'))!==item.name||paymentAddress(reviewField(listing,5,'seller_payment_address'))!==String(item.paymentAddress).toLowerCase()||String(reviewField(listing,7,'delivery_public_key'))!==item.deliveryPublicKey||String(reviewField(listing,3,'xtm_price'))!==String(atomicTari(quote.itemXtm))||String(reviewField(listing,4,'shipping_xtm'))!==String(quote.shippingXtm===0?0:atomicTari(quote.shippingXtm)))throw new Error('Listing details differ from Ootle. Refresh and review the item before paying.');
     }
+    async function verifyBuyerAccount(account){
+      if(typeof account!=='string'||!/^component_[0-9a-f]{64}$/i.test(account))throw new Error('Reconnect your wallet to select a valid Esmeralda account.');
+      const unavailable='Could not verify your Esmeralda account. No payment request was sent. Check your connection and try again.';
+      let response,payload;
+      try{
+        response=await fetch(`${INDEXER_URL}substates/${encodeURIComponent(account)}?local_search_only=false`,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
+      }catch{throw new Error(unavailable)}
+      if(response.status===404)throw new Error('Your Ootle account is not initialized yet, or is not visible on Esmeralda. Initialize and fund it with test Tari in your wallet, wait for confirmation, then retry. No payment request was sent.');
+      if(!response.ok)throw new Error(unavailable);
+      try{payload=await response.json()}catch{throw new Error(unavailable)}
+      const component=decodeChainValue(payload?.substate||payload?.value?.substate)?.Component;
+      if(payload?.verified!==true||!component?.header||!component?.body||typeof component.body!=='object'||!Object.hasOwn(component.body,'state'))throw new Error(unavailable);
+    }
     async function payWithWallet(){
       if(!selected||purchaseBusy||transactionBusy)return;
       const blocked=purchaseBlockReason(selected);if(blocked){toast(blocked);return}
@@ -891,8 +904,12 @@
         $('#paymentNote').textContent='Wallet connected. Publish and configure the v0.6 item-price-fee component before accepting a payment.';
         toast('The item-price-only fee component is not published yet');return
       }
-      const item={...selected},account=walletConnection.accountAddress,button=$('#orderButton'),v={...(selectedQuote||values(selected))};purchaseBusy=true;button.disabled=true;button.textContent='Waiting for wallet…';
+      const item={...selected},account=walletConnection.accountAddress,button=$('#orderButton'),v={...(selectedQuote||values(selected))};let checkoutError='';purchaseBusy=true;button.disabled=true;button.textContent='Waiting for wallet…';
       try{
+        $('#paymentNote').removeAttribute('role');
+        button.textContent='Checking buyer account…';
+        await verifyBuyerAccount(account);
+        if(!walletConnection.connected||walletConnection.accountAddress!==account)throw new Error('Wallet changed. Review checkout again.');
         button.textContent='Verifying listing…';
         await verifyPurchaseListing(item,v);
         button.textContent='Encrypting delivery…';
@@ -911,8 +928,8 @@
         const receipt=await submitInstructions(instructions,summary),chainOrderId=returnedListingId(receipt.result);
         if(!chainOrderId)throw new Error('Payment was accepted, but the escrow order ID could not be read.');
         recordPaidOrder(receipt.transactionId,encryptedDelivery,chainOrderId,item,v)
-      }catch(error){toast(error.message||'Payment was not approved')}
-      finally{purchaseBusy=false;button.disabled=false;renderWalletState()}
+      }catch(error){checkoutError=error.message||'Payment was not approved';toast(checkoutError)}
+      finally{purchaseBusy=false;button.disabled=false;renderWalletState();if(checkoutError){$('#paymentNote').textContent=checkoutError;$('#paymentNote').setAttribute('role','alert')}}
     }
     async function refreshRates(){
       try{

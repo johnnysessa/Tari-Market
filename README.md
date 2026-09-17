@@ -561,3 +561,19 @@ request-only providers, lost responses, delayed approval, reload recovery, late
 responses, and duplicate blocking; local-wallet tests use a simulated Asset Vault.
 Fresh live browser-extension and Mac Asset Vault listing/checkout confirmation
 remains required. No user wallet transactions were sent during these tests.
+
+
+## Buyer account check (issue #1)
+
+Before checkout requests wallet approval, it checks the connected buyer's account
+against the Esmeralda indexer with a fresh network lookup. A missing account stops
+checkout and asks the buyer to initialize and fund it with test Tari in their wallet,
+wait for confirmation, and retry. Indexer outages, unverified or malformed responses
+also stop checkout, with a separate verification-error message. No account creation
+or funding transaction is initiated by this check. Wallet changes during the lookup
+stop checkout. The error remains beside the payment button.
+
+This checks account existence, not sufficient balance or guaranteed transaction
+success. Tests: `node tests/buyer-account.cjs` covers ten account/checkout scenarios;
+the existing provider and security regression checks pass. Live wallet testing is
+still needed. Existing local installations must download the rebuilt launcher ZIP.
