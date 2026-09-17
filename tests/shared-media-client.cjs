@@ -9,9 +9,10 @@ let uploaded=0;ctx.shareListingPhotos=async (i,images,recover)=>{assert.equal(re
  await ctx.refreshSharedMedia(true);assert.equal(uploaded,1);await ctx.refreshSharedMedia(true);assert.equal(uploaded,1); // no repeat prompts or uploads
  assert.equal(item.images[0],original);
  const manifest={component:'current',id:1,images:['/api/listing-images/'+'a'.repeat(64)],description:'Shared text',category:'Other'};
- assert.equal(ctx.applySharedPhotos(item,manifest),true);assert.equal(item.images[0],original);assert.equal(item.sharedImages[0],'https://xtm-market.johnnytsunami14.chatgpt.site'+manifest.images[0]);
+ assert.equal(ctx.applySharedPhotos(item,manifest),true);assert.equal(item.images[0],original);assert.equal(item.sharedImages[0],'https://tari-market.johnnytsunami14.chatgpt.site'+manifest.images[0]);
  assert.equal(ctx.applySharedPhotos(item,{...manifest,images:[],condition:'Like New'}),true);assert.equal(item.condition,'Like New');
  assert.equal(ctx.applySharedPhotos(item,{...manifest,id:2}),false);assert.equal(ctx.applySharedPhotos(item,{...manifest,images:['https://evil.example/x.png']}),false);
- assert.equal(ctx.sharedImageUrl('javascript:alert(1)'), '');assert.equal(ctx.sharedImageUrl('https://xtm-market.johnnytsunami14.chatgpt.site.evil/api/listing-images/'+'a'.repeat(64)), '');
+ assert.equal(ctx.sharedImageUrl('https://xtm-market.johnnytsunami14.chatgpt.site/api/listing-images/'+'a'.repeat(64)),'https://tari-market.johnnytsunami14.chatgpt.site/api/listing-images/'+'a'.repeat(64));
+ assert.equal(ctx.sharedImageUrl('javascript:alert(1)'), '');assert.equal(ctx.sharedImageUrl('https://tari-market.johnnytsunami14.chatgpt.site.evil/api/listing-images/'+'a'.repeat(64)), '');
  console.log('Photo client: automatic recovery with original key, no wallet requirement for recovery, deduplication, local backup preservation, listing binding and trusted image URLs passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,7 +1,7 @@
 const ITEM_CONDITIONS=["New", "Like New", "Open Box", "Refurbished", "Used", "For Parts or Not Working", "Other"];
 const OWNER='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828';
 const MARKETS={component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938:'ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a',component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c:'b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2'};
-const ORIGINS=new Set(['https://xtm-market.johnnytsunami14.chatgpt.site','http://localhost:5180','http://127.0.0.1:5180']);
+const ORIGINS=new Set(['https://xtm-market.johnnytsunami14.chatgpt.site','https://tari-market.johnnytsunami14.chatgpt.site','http://localhost:5180','http://127.0.0.1:5180']);
 const enc=new TextEncoder(),dec=new TextDecoder();
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};

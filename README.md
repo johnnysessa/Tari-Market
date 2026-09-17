@@ -2,9 +2,9 @@
 
 # Tari Market
 
-Tari Market is an open-source marketplace prototype for Tari Ootle. All current listings, shipping, escrow payments, marketplace fees and network fees use tTari on Esmeralda testnet. tTari has no monetary value; USD figures are illustrative and use the mainnet XTM reference price. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
+Tari Market is an open-source marketplace prototype for Tari Ootle. All current listings, shipping, escrow payments, marketplace fees and network fees use tTari on Esmeralda testnet. tTari has no monetary value. Prices are displayed only in tTari. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
 
-**[Open Tari Market](https://xtm-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
+**[Open Tari Market](https://tari-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
 
 Updated September 17, 2026. Current contract source: **v0.12.0**.
 
@@ -48,7 +48,7 @@ Asset Vault's v0.40.0 build hides its WalletConnect button; the previous pairing
 
 1. Keep walletd running on Esmeralda and sign in at `http://localhost:5100`.
 2. In **API Keys** (key icon), create a short-lived `Tari Market Local` key with only `accounts:read`, `transactions:read`, `transaction_requests:create`, and `transaction_requests:read`. Do not grant Admin, direct `transactions:create`, or `transaction_requests:approve`.
-3. Download and unzip [the local launcher](https://xtm-market.johnnytsunami14.chatgpt.site/downloads/xtm-market-local.zip). In a second Terminal run `cd "$HOME/Downloads/Tari-Market-Local"`, then `python3 start.py`. Python 3.9+ is required, with no additional packages.
+3. Download and unzip [the local launcher](https://tari-market.johnnytsunami14.chatgpt.site/downloads/xtm-market-local.zip). In a second Terminal run `cd "$HOME/Downloads/Tari-Market-Local"`, then `python3 start.py`. Python 3.9+ is required, with no additional packages.
 4. Paste the key only into the hidden Terminal prompt. It stays in the launcher's memory, never in browser storage, a file, or the public site.
 5. Open `http://localhost:5180`, connect, and create a test listing. Review its request at `http://localhost:5100/transaction-requests`. The daemon requires separate approval before it can be submitted.
 
@@ -78,7 +78,7 @@ The new timeout is measured as **1,008 consensus epochs**, approximately 14 days
 | Market | Browse items, view prices and stock, and open product details or checkout. |
 | Categories | Browse grouped categories and filter listings. |
 | Product details | View the photo gallery, full description, pricing, seller profile, other seller items, and Buy action. |
-| Checkout | Review one item, shipping, XTM total, USD reference, seller address, delivery details, and escrow terms before wallet approval. |
+| Checkout | Review one item, shipping, tTari total, condition, seller address, delivery details, and escrow terms before wallet approval. |
 | Recent orders | Recover purchases for the connected wallet from verified network state and show available buyer actions. |
 | Orders received | View sales for the connected seller wallet, decrypt delivery details on the listing device, update shipping, view feedback, dispute reviews, and access eligible seller actions. |
 | Refunds & disputes | Start an eligible buyer refund request/payment dispute and follow its status and verdict. |
@@ -93,7 +93,7 @@ Admin navigation is an interface convenience; the contract's signer checks enfor
 
 ## Browsing and listings
 
-- Fixed item and shipping prices in tTari; USD values are a live reference, not the settlement currency.
+- Fixed item and shipping prices displayed only in tTari.
 - Real community listings appear first. Each added community listing reduces the sample-catalog slots until the examples are displaced.
 - An **Items per page** selector below the listings offers 8, 16, 24, 32, 64, or 128 items. The default is 8; the choice is remembered in this browser. Changing it resets pagination to page one. Numbered pages and previous/next controls appear only when available listings exceed the selected size. Selecting 128 shows a second page when there are 129 available listings. Page controls use the selected size; with the default of 8, a seventeenth displayed item starts page three.
 - Category filters, a category directory, seller profiles, and a seller's other-items view.
@@ -520,3 +520,7 @@ The condition and wallet-only access updates passed:
 - `node tests/wallet-order-history.cjs` — recovery from an empty order history, wallet isolation, wallet-switch races, deduplication, and status updates.
 
 The hosted Worker and optional local ZIP were rebuilt. These checks do not constitute a live, two-device wallet checkout test. Existing shipping keys remain browser-bound by design.
+
+### Buyer condition and pricing display
+
+Condition is displayed on listing cards, item details, the purchase item, and the escrow checkout summary. Legacy items without saved condition show **Not specified**. Illustrative USD amounts have been removed from buyer views and order history; the contract’s existing internal reference fields are retained for compatibility. No template or component replacement is required.

@@ -12,7 +12,7 @@ const env={MEDIA_UPLOAD_SECRET:'x'.repeat(64),BUCKET:{
  async head(key){return this.get(key)},
  async put(key,value,options={}){if(fail)throw Error('offline');const prior=storage.get(key),headers=options.onlyIf;if(headers?.get('If-None-Match')==='*'&&prior)return null;if(headers?.get('If-Match')&&headers.get('If-Match')!=='"'+prior?.etag+'"')return null;const bytes=typeof value==='string'?enc.encode(value):value;const result={etag:String(++version),bytes,httpMetadata:options.httpMetadata};storage.set(key,result);return result;}
 }};
-const url='https://xtm-market.johnnytsunami14.chatgpt.site';
+const url='https://tari-market.johnnytsunami14.chatgpt.site';
 const request=(path,data,origin='http://localhost:5180')=>new Request(url+path,{method:data?'POST':'GET',headers:{Origin:origin,'Content-Type':'application/json'},...(data?{body:JSON.stringify(data)}:{})});
 const call=(path,data,origin)=>mediaFetch(request(path,data,origin),env,fetcher);
 const img='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6avQAAAAASUVORK5CYII=';

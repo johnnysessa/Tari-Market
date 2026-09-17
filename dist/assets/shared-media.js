@@ -1,10 +1,12 @@
 /* Shared listing photos; private delivery keys never leave this browser. */
-const SHARED_MEDIA_ORIGIN='https://xtm-market.johnnytsunami14.chatgpt.site';
+const SHARED_MEDIA_ORIGIN='https://tari-market.johnnytsunami14.chatgpt.site';
+const LEGACY_MEDIA_ORIGIN='https://xtm-market.johnnytsunami14.chatgpt.site';
 let sharedMediaBusy=false,sharedMediaLast=0,mediaEditorItem=null,mediaUploadBusy=false;
 const mediaRecoveryAttempts=new Set();
 function sharedImageUrl(value){
  if(typeof value!=='string')return '';
- const path=value.startsWith(SHARED_MEDIA_ORIGIN)?value.slice(SHARED_MEDIA_ORIGIN.length):value;
+ const origin=[SHARED_MEDIA_ORIGIN,LEGACY_MEDIA_ORIGIN].find(origin=>value.startsWith(origin+'/'));
+ const path=origin?value.slice(origin.length):value;
  return /^\/api\/listing-images\/[a-f0-9]{64}$/.test(path)?SHARED_MEDIA_ORIGIN+path:'';
 }
 async function mediaRequest(path,options={}){
