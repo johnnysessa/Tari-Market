@@ -587,3 +587,18 @@ Each visible, in-stock community listing replaces exactly one of the six sample
 items. Sold-out, deleted, and moderated listings do not consume sample slots. Real
 listings appear first; sample counts are calculated before category filtering and
 pagination. Checked by `node tests/sample-catalog.cjs`.
+
+
+### Stock synchronization and seller checkout
+
+Cached community listings stay hidden until their stock is verified. Refreshing
+updates every cached copy of each on-chain listing, including migrated duplicates;
+sold-out items leave the available catalog. An unavailable legacy marketplace no
+longer prevents current listings from syncing. Browser-local photos and delivery
+keys are preserved.
+
+The connected seller sees **Your listing** with buying disabled on cards, open
+product details and checkout. Checkout also rejects the seller account before
+submission. This is a website guard; it does not change the deployed contract.
+Tests: `node tests/stock-and-owner.cjs` plus listing, catalog, buyer-account and
+security regression checks. Download the rebuilt ZIP for existing local installs.

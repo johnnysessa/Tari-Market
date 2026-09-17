@@ -7,7 +7,7 @@ function setup(fetcher){
   const calls={submit:0,encrypt:0,listing:0,record:0},nodes={};
   const ctx=vm.createContext({INDEXER_URL:'https://indexer.example/',AbortSignal,fetch:fetcher,decodeChainValue:v=>v,
     selected:{id:1,chainId:1,name:'Test'},selectedQuote:{itemXtm:1,totalXtm:1},purchaseBusy:false,transactionBusy:false,
-    purchaseBlockReason:()=>'',buyerDetails:()=>({name:'Resident'}),newPurchasesReady:()=>true,
+    isOwnListing:()=>false,purchaseBlockReason:()=>'',buyerDetails:()=>({name:'Resident'}),newPurchasesReady:()=>true,
     walletConnection:{connected:true,accountAddress:account},$:id=>nodes[id]||(nodes[id]={textContent:'',setAttribute(){},removeAttribute(){}}),
     verifyPurchaseListing:async()=>{calls.listing++},encryptDeliveryDetails:async()=>{calls.encrypt++;return 'encrypted'},
     atomicTari:v=>v*1e6,safeId:Number.isSafeInteger,componentCall:()=>({}),literal:v=>v,cborAddress:v=>v,cborHead:()=>0,cborText:v=>v,

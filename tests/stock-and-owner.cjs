@@ -1,0 +1,20 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('dist/assets/app.js','utf8'),account='component_'+'a'.repeat(64);
+const item={id:101,chainId:2,marketComponent:'current',name:'Versace Wallet',stock:1,paymentAddress:account,deliveryPublicKey:'key'};
+const ctx=vm.createContext({MARKET_COMPONENT_ADDRESS:'current',PREVIOUS_MARKET_COMPONENT:'old',listings:[{...item},{...item,id:102}],saveListings(){},paymentAddress:v=>v,postVisible:()=>true,postRegistryReady:true,newPurchasesReady:()=>true,walletConnection:{connected:true,accountAddress:account.toUpperCase()}});
+const line=name=>source.split('\n').find(l=>l.includes('function '+name+'('));
+vm.runInContext(line('listingRows')+'\n'+line('sameListingOrigin')+'\n'+source.slice(source.indexOf('    function syncMarketListings'),source.indexOf('    async function refreshMyItems'))+'\n'+line('isOwnListing')+'\n'+line('purchaseBlockReason'),ctx);
+const state=Array(15).fill(null);state[3]={2:[2,'Versace Wallet',35,200000000,5000000,account,'signer','key',0,true]};state[13]={};
+ctx.syncMarketListings(state,null);
+for(const row of ctx.listings){assert.equal(row.stock,0);assert.equal(row.inventoryVerified,true)}
+assert.match(ctx.purchaseBlockReason(item),/your listing/);
+ctx.walletConnection.accountAddress='component_'+'b'.repeat(64);
+assert.equal(ctx.purchaseBlockReason(item),'');
+assert.match(ctx.purchaseBlockReason(ctx.listings[0]),/sold out/);
+assert.match(ctx.purchaseBlockReason({...item,inventoryVerified:false}),/could not be verified/);
+const button={};const detail={open:true,dataset:{listingId:'101'}};
+ctx.document={querySelectorAll:()=>[{dataset:{buy:'101'},...button}]};ctx.$=id=>id==='#productDialog'?detail:button;
+vm.runInContext(source.slice(source.indexOf('    function refreshListingBuyControls'),source.indexOf('    function purchaseBlockReason')),ctx);
+ctx.refreshListingBuyControls();assert.equal(button.textContent,'Sold out');assert.equal(button.disabled,true);
+ctx.walletConnection.accountAddress=account;ctx.refreshListingBuyControls();assert.equal(button.textContent,'Your listing');assert.equal(button.disabled,true);
+console.log('Stock/owner checks: duplicate cache reconciliation, missing legacy state, self-purchase guard, wallet switch and open detail button passed.');
