@@ -39,7 +39,7 @@
     }
     const response = await fetch('/local-wallet/rpc', {
       method: 'POST', headers: {'Content-Type': 'application/json', 'X-XTM-Local': '1', 'X-XTM-Session': session},
-      body: JSON.stringify({method, params}), cache: 'no-store', signal: AbortSignal.timeout(60000),
+      body: JSON.stringify({method, params}), cache: 'no-store', signal: AbortSignal.timeout(method === 'tari_submitTransaction' ? 180000 : 60000),
     });
     // A restarted launcher has a new session. Retry ONLY reads, never an
     // approval lookup (which can submit an approved request) or a write.

@@ -36,11 +36,13 @@ class FakeWallet(mod.Wallet):
             return {"account": {"component_address": ADDRESS, "owner_key_id": {"Derived": {"key_index": 0}}}}
         if method == "transactions.detect_inputs":
             transaction = copy.deepcopy(params["transaction"])
-            transaction["V1"]["inputs"] = [ADDRESS]
+            transaction["V1"]["inputs"] = [{"substate_id": ADDRESS, "version": None}]
             transaction["V1"]["nonce"] = int(transaction["V1"]["nonce"])
             if self.mutate:
                 transaction["V1"]["instructions"] = []
             return {"transaction": transaction}
+        if method == "transactions.submit_dry_run":
+            return {"result": {"finalize": {"result": {"Accept": {}}}}, "required_fees": 3000}
         if method == "transaction_requests.create":
             self.created_transaction = params["transaction"]
             return {"request_id": 7}
@@ -77,6 +79,56 @@ class Tests(unittest.TestCase):
         self.wallet.check_request(7)
         self.assertEqual([m for m, _ in self.wallet.calls].count("transaction_requests.submit"), 1)
         self.assertEqual(self.wallet.created_transaction["V1"]["nonce"], 1789488366123456789)
+
+    def test_recursive_inputs_include_recipient_vault_before_simulation(self):
+        original = self.wallet.rpc
+        recipient, vault = "component_" + "c" * 64, "vault_" + "d" * 64
+        passes = []
+        def rpc(method, params):
+            result = original(method, params)
+            if method == "transactions.detect_inputs":
+                ids = {row["substate_id"] for row in params["transaction"]["V1"]["inputs"]}
+                passes.append(set(ids))
+                ids.update((ADDRESS, recipient))
+                if recipient in passes[-1]: ids.add(vault)
+                result["transaction"]["V1"]["inputs"] = [{"substate_id": x, "version": None} for x in sorted(ids)]
+            if method == "transactions.submit_dry_run":
+                self.assertFalse(params["detect_inputs"])
+                self.assertIn(vault, [x["substate_id"] for x in params["transaction"]["V1"]["inputs"]])
+            return result
+        self.wallet.rpc = rpc
+        self.wallet.create_request(transaction())
+        self.assertEqual(len(passes), 3)
+        dry = next(p for m, p in self.wallet.calls if m == "transactions.submit_dry_run")
+        self.assertEqual(dry["transaction"], self.wallet.created_transaction)
+
+    def test_failed_unknown_and_over_budget_simulations_never_create_request(self):
+        for result in ({"result": {"finalize": {"result": {"AcceptFeeRejectRest": [{}, "missing vault"]}}}},
+                       {}, {"result": {"finalize": {"result": {"Accept": {}}}}, "required_fees": 20001}):
+            with self.subTest(result=result):
+                wallet = FakeWallet()
+                original = wallet.rpc
+                def rpc(method, params):
+                    return result if method == "transactions.submit_dry_run" else original(method, params)
+                wallet.rpc = rpc
+                with self.assertRaises(mod.WalletError): wallet.create_request(transaction())
+                self.assertIsNone(wallet.created_transaction)
+
+    def test_unbounded_input_expansion_stops_without_request(self):
+        original = self.wallet.rpc
+        count = 0
+        def rpc(method, params):
+            nonlocal count
+            result = original(method, params)
+            if method == "transactions.detect_inputs":
+                count += 1
+                result["transaction"]["V1"]["inputs"] = params["transaction"]["V1"]["inputs"] + [
+                    {"substate_id": "component_" + format(count, "064x"), "version": None}]
+            return result
+        self.wallet.rpc = rpc
+        with self.assertRaises(mod.WalletError): self.wallet.create_request(transaction())
+        self.assertEqual(count, 8)
+        self.assertIsNone(self.wallet.created_transaction)
 
     def test_rejection_does_not_submit(self):
         self.wallet.create_request(transaction())

@@ -2,7 +2,8 @@
 """Run Tari Market locally with walletd's separately approved transaction requests.
 
 Python 3.9+; standard library only. The wallet API key stays in this process.
-The helper never calls a signing, approval, transfer, or direct-submit endpoint.
+Only a no-fee simulation is signed before approval. The helper never approves
+a request or submits a real transaction through a direct-submit endpoint.
 """
 import getpass
 import json
@@ -10,6 +11,7 @@ import mimetypes
 import re
 import secrets
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -90,6 +92,7 @@ class Wallet:
 
     def create_request(self, params):
         with self._lock:
+            started = time.monotonic()
             self.network()
             if self._uncertain:
                 raise WalletError("A previous request has an uncertain result. Check Asset Vault Requests and Transactions before restarting the launcher.")
@@ -116,18 +119,25 @@ class Wallet:
                 raise WalletError("Network fee must be capped at 0.02 tTari from the connected account.")
             if not isinstance(body.get("instructions"), list) or not 1 <= len(body["instructions"]) <= 16:
                 raise WalletError("Invalid instruction count.")
-            detected = self.rpc("transactions.detect_inputs", {"transaction": tx, "use_unversioned": True})["transaction"]
-            # The wallet may resolve inputs, but the reviewed instructions must not change.
-            before = {k: v for k, v in body.items() if k != "inputs"}
-            after = {k: v for k, v in detected.get("V1", {}).items() if k != "inputs"}
-            # walletd accepts a decimal string nonce and serializes it as a u64.
-            # Python preserves the full integer, unlike a browser JSON number.
-            before["nonce"] = int(before.get("nonce", 0))
-            after["nonce"] = int(after.get("nonce", 0))
-            if before != after:
-                raise WalletError("Input detection unexpectedly changed the transaction.")
+            detected = self.resolve_inputs(tx)
+            # Simulate this exact input set; never let simulation silently repair it.
+            # walletd v0.40 authorizes this non-finalizing endpoint with transactions:read.
+            simulation = self.rpc("transactions.submit_dry_run", {
+                "transaction": detected, "seal_signer": account["owner_key_id"],
+                "other_signers": [], "signatures": [], "lock_ids": [],
+                "detect_inputs": False, "detect_inputs_use_unversioned": True,
+            })
+            outcome = simulation.get("result", {}).get("finalize", {}).get("result")
+            if not isinstance(outcome, dict) or set(outcome) != {"Accept"}:
+                raise WalletError("Transaction simulation failed. No approval request was created and no network fee was charged. " +
+                                  json.dumps(outcome, ensure_ascii=True)[:300])
+            required = simulation.get("required_fees")
+            if type(required) is not int or not 0 <= required <= 20000:
+                raise WalletError("The simulation could not confirm the 0.02 tTari fee limit. Nothing was submitted.")
             request = {"transaction": detected, "seal_signer": account["owner_key_id"],
                 "other_signers": [], "signatures": [], "lock_ids": [], "ttl_secs": 600}
+            if time.monotonic() - started > 90:
+                raise WalletError("Transaction preparation took too long. No approval request was created. Refresh and try again.")
             # A lost create response must never trigger an automatic duplicate.
             self._uncertain = True
             result = self.rpc("transaction_requests.create", request)
@@ -138,6 +148,48 @@ class Wallet:
             self._pending = request_id
             self._uncertain = False
             return {"approval_request_id": request_id}
+
+    def resolve_inputs(self, transaction):
+        """Expand indirect account dependencies before freezing the approval request.
+
+        walletd v0.40 includes component references without recursively expanding
+        their vaults. Feeding detected inputs back makes those accounts roots.
+        Bound the traversal and fail closed if it cannot reach a stable set.
+        """
+        def instructions(tx):
+            if not isinstance(tx, dict) or set(tx) != {"V1"} or not isinstance(tx["V1"], dict):
+                raise WalletError("Unexpected input detection response.")
+            body = {k: v for k, v in tx["V1"].items() if k != "inputs"}
+            body["nonce"] = int(body.get("nonce", 0))
+            return body
+
+        def inputs(tx):
+            rows = tx["V1"].get("inputs")
+            if not isinstance(rows, list) or len(rows) > 256:
+                raise WalletError("Transaction dependencies exceed the local connector limit.")
+            ids = set()
+            for row in rows:
+                if (not isinstance(row, dict) or set(row) != {"substate_id", "version"} or
+                        not isinstance(row["substate_id"], str) or row["version"] is not None):
+                    raise WalletError("Unexpected transaction input format.")
+                ids.add(row["substate_id"])
+            return ids
+
+        expected = instructions(transaction)
+        previous = inputs(transaction)
+        for _ in range(8):
+            detected = self.rpc("transactions.detect_inputs", {
+                "transaction": transaction, "use_unversioned": True,
+            })["transaction"]
+            if instructions(detected) != expected:
+                raise WalletError("Input detection unexpectedly changed the transaction.")
+            current = inputs(detected)
+            if not previous.issubset(current):
+                raise WalletError("Input detection removed a required transaction input.")
+            if current == previous:
+                return detected
+            previous, transaction = current, detected
+        raise WalletError("Could not finish resolving transaction dependencies. Nothing was submitted.")
 
     def check_request(self, request_id):
         with self._lock:

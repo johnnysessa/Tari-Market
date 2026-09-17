@@ -618,3 +618,28 @@ posted when its transaction response is unavailable.
 Validation: `node tests/receipt-confirmation.cjs`, provider transaction checks and
 security checks. Live user-wallet confirmation remains to be checked. Existing
 local users must download the refreshed launcher.
+
+
+## Receipt-release dependency fix (September 17)
+
+The failed receipt transaction `898a5c542bee5c54c5bb5eef6c93f68117857ace991ed02ff6e25bc0d9472109`
+called `confirm_receipt_and_review` for current-market order #5. Its input list included the seller component
+but omitted the seller's existing vault. The finalized result was `AcceptFeeRejectRest`: 0.002550 tTari
+in network fees, with the receipt/release operation rejected. This transaction did not release escrow.
+
+The local Asset Vault connector now repeats read-only input detection until the dependency set stabilizes,
+so indirect recipient accounts also contribute their vaults. Traversal is bounded and cannot change the
+reviewed instructions. Before creating an approval request, the connector calls walletd's
+`transactions.submit_dry_run` using the exact resolved inputs and rejects failed, unknown, or over-budget
+simulations. This endpoint signs a simulation but does not finalize a transaction or charge a fee;
+it is authorized by the existing `transactions:read` scope in walletd v0.40. No new API-key permissions
+are needed. Real submission still requires the user's separate Asset Vault approval.
+
+Ten simulated-wallet tests cover the dependency chain, exact simulated/request input equality,
+failed simulation, fee cap, bounded traversal, separate approval, response loss, and prior safeguards.
+These tests do not establish a successful live payout. Simulation cannot guarantee acceptance if chain
+state changes before approval. The new preflight applies to the local Asset Vault connector; other
+wallet transports retain their own validation. Download the updated local bundle and restart its launcher.
+
+Upstream references: [v0.40 input resolver](https://github.com/tari-project/tari-ootle/blob/v0.40.0/crates/wallet/sdk/src/apis/substate.rs)
+and [detection and dry-run handlers](https://github.com/tari-project/tari-ootle/blob/v0.40.0/applications/tari_walletd/src/handlers/transaction.rs).

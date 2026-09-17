@@ -42,7 +42,8 @@ The remembered account is only an address, never an API key or signing key.
 
 5. TEST A LISTING
 Choose List an item. Use a test product and your connected wallet address.
-Choose your seller username and submit. The marketplace shows a request ID.
+Choose your seller username and submit. The launcher first resolves recipient vaults and runs a no-fee simulation.
+If validation succeeds, the marketplace shows a request ID.
 Open http://localhost:5100/transaction-requests (the check-circle icon).
 Review the exact transaction and fee. Approve only the request you intended.
 Return to Tari Market and keep its tab open; it submits after your approval.
@@ -68,9 +69,9 @@ TROUBLESHOOTING
 
 LOCAL BROWSER DATA
 The localhost marketplace has separate browser storage from the public site.
-Listings, photos, orders and delivery-decryption keys do not transfer
-automatically. Use this same local browser profile for your test listings.
-Switch wallet accounts and reconnect to test a separate buyer. The shared
-catalog across different devices is not yet implemented.
+Listings and orders can be recovered from the network, and listing photos
+are shared by the hosted service. Delivery-decryption keys stay in this browser.
+Use the same local browser profile to retain access to encrypted shipping details.
+Switch wallet accounts and reconnect to test a separate buyer.
 
-Source: https://github.com/johnnysessa/XMT-Marketplace
+Source: https://github.com/johnnysessa/Tari-Market
