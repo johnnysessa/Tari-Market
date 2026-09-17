@@ -565,6 +565,8 @@ remains required. No user wallet transactions were sent during these tests.
 
 ## Buyer account check (issue #1)
 
+Credit: [chironbuilds](https://github.com/chironbuilds) reported and reproduced both the insufficient checkout fee cap and the uninitialized buyer-account failure in [issue #1](https://github.com/johnnysessa/Tari-Market/issues/1). Their findings led to these fixes; they also contributed the transaction-confirmation fix in [PR #2](https://github.com/johnnysessa/Tari-Market/pull/2).
+
 Before checkout requests wallet approval, it checks the connected buyer's account
 against the Esmeralda indexer with a fresh network lookup. A missing account stops
 checkout and asks the buyer to initialize and fund it with test Tari in their wallet,
