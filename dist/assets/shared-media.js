@@ -14,10 +14,11 @@ async function mediaRequest(path,options={}){
 }
 function applySharedPhotos(item,manifest){
  if(!manifest||manifest.component!==item.marketComponent||manifest.id!==item.chainId||!Array.isArray(manifest.images)||manifest.images.length>8)return false;
- const images=manifest.images.map(sharedImageUrl);if(!images.length||images.some(v=>!v))return false;
+ const images=manifest.images.map(sharedImageUrl);if(images.some(v=>!v))return false;
  item.sharedImages=images;item.mediaShared=true;item.mediaPending=false;
  if(typeof manifest.description==='string')item.description=manifest.description.slice(0,5000);
  if(typeof manifest.category==='string'&&CATEGORIES.includes(manifest.category))item.category=manifest.category;
+ if(typeof manifest.condition==='string'&&ITEM_CONDITIONS.includes(manifest.condition))item.condition=manifest.condition;
  return true;
 }
 async function shareListingPhotos(item,images,recover=false){
@@ -26,6 +27,7 @@ async function shareListingPhotos(item,images,recover=false){
  const key=await loadDeliveryPrivateKey(item.id);
  if(!key)throw new Error('Open the browser where this listing was created to share or replace its photos. Its private listing key is not on this device.');
  const content={images,description:String(item.description||''),category:String(item.category||'Other')};
+ if(ITEM_CONDITIONS.includes(item.condition))content.condition=item.condition;
  const serialized=new TextEncoder().encode(JSON.stringify(content));
  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',serialized)),v=>v.toString(16).padStart(2,'0')).join('');
  const challenge=await mediaRequest('/api/listing-media/challenge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({component:item.marketComponent,id:item.chainId,digest})});
@@ -50,7 +52,7 @@ async function refreshSharedMedia(force=false){
      if(manifest){applySharedPhotos(item,manifest);continue;}
      const original=(Array.isArray(item.images)&&item.images.length?item.images:[item.image]).filter(value=>typeof value==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(value));
      const attempt=component+':'+item.chainId+':'+walletConnection.accountAddress;
-     if(!original.length||mediaRecoveryAttempts.has(attempt))continue;
+     if((!original.length&&!ITEM_CONDITIONS.includes(item.condition))||mediaRecoveryAttempts.has(attempt))continue;
      mediaRecoveryAttempts.add(attempt);
      if(!await loadDeliveryPrivateKey(item.id))continue;
      try{await shareListingPhotos(item,original,true);recovered++;}catch{item.mediaPending=true;failed=true;}
@@ -59,7 +61,7 @@ async function refreshSharedMedia(force=false){
   }
   sharedMediaLast=Date.now();saveListings();render();
  }catch{failed=true;}
- finally{sharedMediaBusy=false;document.querySelector('#sharedPhotoStatus').textContent=failed?'Some photos could not be shared or loaded. Your local originals are preserved. Use My Items → Manage photos to retry.':recovered?`${recovered} listing photo set${recovered===1?'':'s'} recovered and shared.`:'';}
+ finally{sharedMediaBusy=false;document.querySelector('#sharedPhotoStatus').textContent=failed?'Some listing details or photos could not be shared. Use Recover saved details & photos to retry.':recovered?`${recovered} listing photo set${recovered===1?'':'s'} recovered and shared.`:'';}
 }
 async function openMediaEditor(component,id){
  const item=listings.find(row=>row.marketComponent===component&&row.chainId===id);

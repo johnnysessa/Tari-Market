@@ -1,3 +1,4 @@
+const ITEM_CONDITIONS=["New", "Like New", "Open Box", "Refurbished", "Used", "For Parts or Not Working", "Other"];
 const OWNER='d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828';
 const MARKETS={component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938:'ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a',component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c:'b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2'};
 const ORIGINS=new Set(['https://xtm-market.johnnytsunami14.chatgpt.site','http://localhost:5180','http://127.0.0.1:5180']);
@@ -30,8 +31,11 @@ async function body(request,max){
 }
 async function hmacKey(secret){if(typeof secret!=='string'||secret.length<40)fail('Photo sharing is temporarily unavailable.',503);return crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify'])}
 function canonical(data){
- if(!data||!Array.isArray(data.images)||data.images.length<1||data.images.length>8||typeof data.description!=='string'||data.description.length>5000||typeof data.category!=='string'||data.category.length>80)fail('Choose 1–8 photos and a valid description.');
- return JSON.stringify({images:data.images,description:data.description,category:data.category});
+ if(!data||!Array.isArray(data.images)||data.images.length>8||typeof data.description!=='string'||data.description.length>5000||typeof data.category!=='string'||data.category.length>80)fail('Choose up to 8 photos and a valid description.');
+ if(data.condition!==undefined&&!ITEM_CONDITIONS.includes(data.condition))fail('Choose a valid item condition.');
+ const value={images:data.images,description:data.description,category:data.category};
+ if(data.condition!==undefined)value.condition=data.condition;
+ return JSON.stringify(value);
 }
 function imageBytes(uri){
  if(typeof uri!=='string'||uri.length>1500000)fail('Each prepared photo must be smaller than 1 MB.',413);
@@ -80,6 +84,7 @@ export async function mediaFetch(request,env,fetcher=fetch){
   const decoded=content.images.map(imageBytes),images=[];
   for(const image of decoded){const digest=await hash(image.bytes);await env.BUCKET.put('images/'+digest,image.bytes,{httpMetadata:{contentType:image.type}});images.push('/api/listing-images/'+digest)}
   const manifest={version:1,component:t.component,id:t.id,digest:t.digest,images,description:content.description,category:content.category,updatedAt:new Date().toISOString()};
+  if(content.condition!==undefined)manifest.condition=content.condition;
   const saved=await env.BUCKET.put(key,JSON.stringify(manifest),{onlyIf:new Headers(t.etag?{'If-Match':'"'+t.etag+'"'}:{'If-None-Match':'*'}),httpMetadata:{contentType:'application/json'}});
   if(!saved)fail('These photos were updated elsewhere. Reload before replacing them.',409);
   response=json(manifest);

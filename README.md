@@ -6,19 +6,27 @@ Tari Market is an open-source marketplace prototype for Tari Ootle. All current 
 
 **[Open Tari Market](https://xtm-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
 
-Updated September 15, 2026. Current contract source: **v0.11.0**.
+Updated September 17, 2026. Current contract source: **v0.12.0**.
 
 ## Current status
 
-The v0.11.0 template is published and its marketplace component is instantiated on **Esmeralda testnet**. The website is open for user-authorized test transactions, with visible testnet labeling. Use test funds and test listings only. This is not production readiness or a completed end-to-end audit.
+The v0.12.0 marketplace is instantiated on **Esmeralda testnet**. Use test funds and test listings only. This remains a prototype, not a completed end-to-end audit.
 
-The live indexer returned `verified: true` for the expected template, native `OwnerRule::None`, owner signing key, XTM resource, platform address, and 15-field component state. Every submission rechecks this configuration. Wallet signing, purchases, refunds, seller claims, and admin flows still need live user testing. Previous components are retained for existing orders; older listings must be recreated for new purchases.
+Public visitors use their wallet connection: **no email or ChatGPT sign-in, launcher download, Terminal, or local web server is required with a compatible wallet**. An existing wallet must support Tari Esmeralda WalletConnect or the available Tari browser provider. Asset Vault v0.40.0 has a separate optional developer workflow below.
 
-Current component: `component_1bf64f1ee50461e47dba27d7b24326f356f30121f10c16a60eb91c2ced275a9c`.
+Current component: `component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938`.
 
-Template: `template_b10f1ab4c4902241f3e4592b1719ac8059aece55011a4e6f580c61f28ecfb7c2`.
+Template: `template_ec7cb232c66177d465285ac5c45f3e3fd8fdca0c4382c3173f85267ab7ca476a`.
 
-Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e24713b8f`.
+Creation transaction: `201ff42a769e7592b876712a4f5cfba2f86026a87f3720a718d43bde8a13837e`.
+
+The application checks the expected contract identity before transactions. The September 17 fee-recipient read returned the configured account but `verified: false`; this is not a fresh verified on-chain confirmation. Network verification failures must not be treated as successful payments or proof of readiness.
+
+## Access from another device
+
+Connect the **same wallet account** on the public site to find its on-chain listings and recover buyer/seller order history from verified network responses. Wallet switches are checked during recovery, and recovered orders are filtered by wallet. Older components remain referenced for their existing orders.
+
+Shipping-decryption keys intentionally remain in the **original browser**. Sellers need that browser to read encrypted shipping information and authorize shared-photo changes for those listings. Connecting the same wallet on another device does not recover these keys. No cloud key vault, email login, or ChatGPT login is implemented. The optional browser test wallet is also device-local; it is not automatic cross-device wallet recovery.
 
 ## Wallet connection options
 
@@ -26,17 +34,17 @@ Creation transaction: `e71313961ceac2699aefacf56a4b8eea9afd0e6dbf11362210ecd49e2
 
 | Where you open Tari Market | Default connection | Other options |
 |---|---|---|
-| Public site in a normal browser | WalletConnect | Local Asset Vault launcher; browser provider if available |
-| Inside Tari Universe with its provider available | Tari Universe / browser wallet | WalletConnect and local launcher instructions |
+| Public site in a normal browser | WalletConnect for new visitors | Available browser provider; optional device-local browser test wallet |
+| Inside Tari Universe with its provider available | Tari Universe / browser wallet | WalletConnect; optional device-local browser test wallet |
 | Local launcher at `http://localhost:5180` | Asset Vault local connection | WalletConnect; browser provider if available |
 
 Asset Vault **v0.40.0 does not expose its WalletConnect button**. Restoring WalletConnect on Tari Market does not enable it inside that wallet. Use the optional local launcher with this Asset Vault version.
 
-**No template or component update is required for these wallet connection changes.** The existing v0.11.0 Esmeralda template and component remain active. Website versions 79–80 added the local launcher and restored WalletConnect as the public default.
+**No template or component update is required for these wallet connection changes.** The existing v0.12.0 Esmeralda template and component remain active. A saved browser wallet may retain its unlock flow.
 
 ## Connect Asset Vault v0.40.0 on your Mac
 
-Asset Vault's v0.40.0 build hides its WalletConnect button; the previous pairing instructions were incorrect for that release. Use the **local Esmeralda launcher** instead. The public site offers the download under **Connect Tari wallet → Asset Vault / local test launcher**. Tari Universe and an explicit WalletConnect option for compatible wallets remain available.
+Asset Vault's v0.40.0 build hides its WalletConnect button; the previous pairing instructions were incorrect for that release. Use the **local Esmeralda launcher** instead. This is an optional developer/owner workflow; the local option is hidden from public visitors unless a local launcher is available. Tari Universe and an explicit WalletConnect option for compatible wallets remain available.
 
 1. Keep walletd running on Esmeralda and sign in at `http://localhost:5100`.
 2. In **API Keys** (key icon), create a short-lived `Tari Market Local` key with only `accounts:read`, `transactions:read`, `transaction_requests:create`, and `transaction_requests:read`. Do not grant Admin, direct `transactions:create`, or `transaction_requests:approve`.
@@ -58,7 +66,7 @@ The website includes the following recent changes:
 - The buy page shows **Seller claim window — 14 days after recorded purchase**. Checkout terms, the escrow guide, dispute timing guidance, and automatic-review explanations use the same purchase-based rule.
 - The top-left **Tari Market** button opens the Market page.
 - The bottom of the Market page offers **8, 16, 24, 32, 64, or 128 items per page**, remembers the selection in this browser, and returns to page one when changed.
-- The **v0.11.0** template is published and its component is instantiated on Esmeralda. The wallet updates do not change either address.
+- The **v0.12.0** template is published and its component is instantiated on Esmeralda. The wallet updates do not change either address.
 - WalletConnect is the default on the public website; the optional local launcher uses Asset Vault’s separate request approvals.
 
 The new timeout is measured as **1,008 consensus epochs**, approximately 14 days, rather than an exact wall-clock deadline. An undisputed order can become eligible before shipping or delivery is recorded. The seller must submit a claim; payment does not release automatically when the deadline passes. This rule applies to the new testnet component, while existing orders retain their original contract rules.
@@ -71,12 +79,12 @@ The new timeout is measured as **1,008 consensus epochs**, approximately 14 days
 | Categories | Browse grouped categories and filter listings. |
 | Product details | View the photo gallery, full description, pricing, seller profile, other seller items, and Buy action. |
 | Checkout | Review one item, shipping, XTM total, USD reference, seller address, delivery details, and escrow terms before wallet approval. |
-| Recent orders | View purchases submitted from this browser and available buyer actions. |
+| Recent orders | Recover purchases for the connected wallet from verified network state and show available buyer actions. |
 | Orders received | View sales for the connected seller wallet, decrypt delivery details on the listing device, update shipping, view feedback, dispute reviews, and access eligible seller actions. |
 | Refunds & disputes | Start an eligible buyer refund request/payment dispute and follow its status and verdict. |
 | Disputes & refunds guide | Explain payment disputes, refund outcomes, seller payouts, timing, and limitations. |
 | Ootle escrow | Explain funding at purchase, shipping, delivery recording, receipt confirmation, timeout claims, and refunds. |
-| 3% fee | Explain app-maintenance and future Tari-development funding, the item-price-only calculation, and separate seller payment under v0.11.0. |
+| 3% fee | Explain app-maintenance and future Tari-development funding, the item-price-only calculation, and separate seller payment under v0.12.0. |
 | Admin disputes | Combined payment-dispute and rating-dispute workspace, including Manage admins. Hidden from disconnected and non-admin wallets. |
 
 Clicking **Tari Market** in the top-left corner returns to the Market page. The brand button also supports keyboard navigation.
@@ -85,17 +93,23 @@ Admin navigation is an interface convenience; the contract's signer checks enfor
 
 ## Browsing and listings
 
-- Fixed item and shipping prices in XTM; USD values are a live reference, not the settlement currency.
+- Fixed item and shipping prices in tTari; USD values are a live reference, not the settlement currency.
 - Real community listings appear first. Each added community listing reduces the sample-catalog slots until the examples are displaced.
 - An **Items per page** selector below the listings offers 8, 16, 24, 32, 64, or 128 items. The default is 8; the choice is remembered in this browser. Changing it resets pagination to page one. Numbered pages and previous/next controls appear only when available listings exceed the selected size. Selecting 128 shows a second page when there are 129 available listings. Page controls use the selected size; with the default of 8, a seventeenth displayed item starts page three.
 - Category filters, a category directory, seller profiles, and a seller's other-items view.
 - Up to eight JPG, PNG, or WebP photos per listing, with browser resizing, removable previews, a cover photo, and gallery controls.
-- Listing form includes title/description, category, item price, shipping, stock, and seller account address.
+- Listing form includes title/description, category, required condition, item price, shipping, stock, and seller account address.
 - Example catalog sellers use fictional usernames: `@pixel_trader`, `@orchard_tech`, `@frame_chaser`, `@cinema_corner`, `@pocket_gadgets`, and `@console_cove`. These display-only examples do not reserve on-chain names.
 - Example catalog items and sample seller feedback are clearly identified. Catalog items can be previewed but cannot be purchased.
 - A required legal-use notice describes prohibited goods, user responsibilities, and limits of recovery and liability.
 
 Listing photos and descriptions now use shared object storage after a successful upload. Chain inventory remains authoritative. Browser-local originals are retained for recovery. Local order history and private delivery keys still require the original browser; full cross-device order-history recovery is not implemented.
+
+### Item condition
+
+Sellers must choose **New, Like New, Open Box, Refurbished, Used, For Parts or Not Working, or Other**. The condition appears on listing cards, product details, and the purchase screen. Existing listings without a condition show **Not specified**.
+
+Condition, description, and category are shared through the authenticated listing-media service, including listings with no photos. A failed metadata upload is reported separately from a successful on-chain listing; use **My Items → Recover saved details & photos** to retry from the original browser. No template or component update is needed for this field.
 
 ## Wallet-linked seller usernames
 
@@ -122,7 +136,7 @@ New per-listing private delivery keys are non-extractable CryptoKeys stored in I
 
 Before checkout submits, the app compares the selected listing's title, seller address, price, shipping, encryption key, and availability against fresh component state.
 
-## Escrow lifecycle in v0.11.0
+## Escrow lifecycle in v0.12.0
 
 1. **Purchase funds escrow.** The wallet withdraws the full item price plus shipping and passes it to `buy`. The order and escrow deposit complete in the same transaction. Funding does not wait for delivery.
 2. **Shipping leaves funds held.** Only the original seller signer can mark an order shipped.
@@ -142,16 +156,20 @@ The new component uses native `OwnerRule::None` to remove native owner-based tem
 
 The fee supports app maintenance and future development of Tari. It is calculated from the **item price only**, excluding shipping.
 
-Under v0.11.0, the platform does not receive escrow withdrawals. After a successful sale, the original seller separately approves `pay_marketplace_fee`, supplying a new XTM payment bucket from their wallet. The contract checks the signer, resource, exact fee, completed-sale status, and whether the fee was already paid. Refunded orders owe no fee. Eligible sellers have a **Pay separate 3% fee** action once the security upgrade is active.
+Under v0.12.0, the platform does not receive escrow withdrawals. After a successful sale, the original seller separately approves `pay_marketplace_fee`, supplying a new tTari payment bucket from their wallet. The contract checks the signer, resource, exact fee, completed-sale status, and whether the fee was already paid. Refunded orders owe no fee. Eligible sellers have a **Pay separate 3% fee** action after a completed, non-refunded sale.
 
-For a 100 XTM item with 10 XTM shipping:
+Configured fee recipient (AllGasNoBrakes):
+`component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`.
+This is an account component, not a signer public key. The fee is **separately seller-approved**, not automatically withheld from escrow.
+
+For a 100 tTari item with 10 tTari shipping:
 
 | Event | Amount |
 |---|---:|
-| Buyer deposits into escrow at purchase | 110 XTM |
-| Seller receives on successful escrow release | 110 XTM |
-| Seller separately approves the platform fee | 3 XTM |
-| Buyer receives on a full refund instead | 110 XTM |
+| Buyer deposits into escrow at purchase | 110 tTari |
+| Seller receives on successful escrow release | 110 tTari |
+| Seller separately approves the platform fee | 3 tTari |
+| Buyer receives on a full refund instead | 110 tTari |
 
 Separate fee collection cannot block escrow settlement and is not guaranteed if the seller declines to pay. Older contracts that deduct fees during release are not changed by the new source.
 
@@ -274,7 +292,7 @@ cargo build --release --target wasm32-unknown-unknown --manifest-path contracts/
 
 Unit and source checks do not simulate a full Ootle transaction or prove that a deployed component matches this repository.
 
-## Ootle activation checklist (remaining integration checks apply)
+## Historical v0.11 activation checklist
 
 **v0.11.0 is published and instantiated.** The checklist below documents rollout verification; transaction scenarios remain to be tested. Historical upgrade instructions are not the current rollout plan.
 
@@ -322,7 +340,7 @@ Tari Market is released under the [MIT License](LICENSE). Retain applicable thir
 
 ## Browser test wallet (Esmeralda only)
 
-Choose **Connect Tari wallet → Browser test wallet · Esmeralda**. Create a password
+Optional, device-local mode: choose **Connect Tari wallet → Browser test wallet · this device**. Create a password
 (at least 12 characters), acknowledge test-only use, and connect. The wallet creates
 keys locally, then requests the native faucet’s 1,000 test Tari grant (less the
 network fee, capped at 0.3 test Tari) after the explicit setup action. No recovery
@@ -354,8 +372,7 @@ public key before connecting.
 New wallets automatically create an on-chain account through the native faucet.
 The account must be confirmed and ownership checked before it is shown connected.
 Existing unfunded browser wallets can complete funding on unlock. No fake balance
-is shown if the faucet is unavailable. The default connection method is the
-browser test wallet, while other existing methods remain available.
+is shown if the faucet is unavailable. New public visitors default to WalletConnect (or an available provider); saved browser-wallet users keep their unlock flow. The launcher connection is shown only where the launcher is available.
 
 Validation: `node tests/security.cjs`, `node tests/browser-test-wallet.mjs`,
 `node tests/browser-wallet-return.cjs`, and `node tests/browser-wallet-funding.mjs`.
@@ -456,8 +473,8 @@ post moderation, and security checks. Local users need the refreshed launcher bu
 
 ## Shared listing photos
 
-New listing creation uploads photos to the shared media service after the listing
-transaction succeeds. Public and localhost clients fetch the same saved image URLs
+New listing creation uploads condition, description, category, and any photos to the shared media service after the listing
+transaction succeeds. Photos are optional. Public and localhost clients fetch the same saved image URLs
 and descriptions. **My Items → Manage photos** lets sellers share saved originals or
 upload replacements. A failed photo upload is reported separately from successful
 listing publication, so users can retry without creating a duplicate listing.
@@ -492,3 +509,14 @@ concurrent updates, replay, type validation, origins, chain identity, and storag
 failures. `node tests/shared-media-client.cjs` checks recovery without wallet login,
 original preservation, deduplication, listing binding and URL validation. Existing
 wallet, listing management, moderation and security checks remain in place.
+
+## September 17 validation
+
+The condition and wallet-only access updates passed:
+- `node tests/security.cjs` — 67 checks.
+- `node tests/listing-management.cjs`.
+- `node tests/shared-media.mjs` and `node tests/shared-media-client.cjs` — condition persistence without photos, tamper rejection, and legacy payload compatibility.
+- `node tests/browser-wallet-return.cjs`.
+- `node tests/wallet-order-history.cjs` — recovery from an empty order history, wallet isolation, wallet-switch races, deduplication, and status updates.
+
+The hosted Worker and optional local ZIP were rebuilt. These checks do not constitute a live, two-device wallet checkout test. Existing shipping keys remain browser-bound by design.

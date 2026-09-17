@@ -35,5 +35,11 @@ let invalid=await auth({...content,images:['data:image/png;base64,'+Buffer.from(
 assert.equal((await call('/api/listing-media/challenge',{component:market,id:1,digest:await digest(content)},'https://evil.example')).status,403);
 verified=false;assert.equal((await call('/api/listing-media/challenge',{component:market,id:1,digest:await digest(content)})).status,503);verified=true;
 active=false;assert.equal((await call('/api/listing-media/challenge',{component:market,id:1,digest:await digest(content)})).status,404);active=true;
+const conditionOnly={images:[],description:'No photo yet',category:'Other',condition:'Used'};
+const conditionAuth=await auth(conditionOnly);
+r=await call('/api/listing-media/upload',{...conditionAuth,content:{...conditionOnly,condition:'New'}});assert.equal(r.status,403);
+r=await call('/api/listing-media/upload',conditionAuth);assert.equal(r.status,200);assert.equal((await r.json()).condition,'Used');
+r=await call('/api/listing-media?component='+market+'&ids=1',null,url);assert.equal((await r.json()).listings[1].condition,'Used');
+r=await call('/api/listing-media/upload',await auth({...conditionOnly,condition:'invalid'}));assert.equal(r.status,400);
 fail=true;assert.equal((await call('/api/listing-media?component='+market+'&ids=1')).status,503);
 console.log('Shared media: private-key proof, tampering, independent-browser reads, image bytes, retries, concurrent writes, replay, bad image types, origins, chain identity and storage failures passed.');

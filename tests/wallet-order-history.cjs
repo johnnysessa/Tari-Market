@@ -1,0 +1,12 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('dist/assets/app.js','utf8');
+const ctx=vm.createContext({walletConnection:{connected:true,accountAddress:'alice'},orders:[],sellerOrders:[],listings:[{id:123,chainId:7,marketComponent:'market'}],reviewField:(r,i)=>r?.[i],readPaymentOrder:r=>({id:r[0],listingId:r[1],buyer:r[3],seller:r[6],refunded:r[14],settled:r[13],disputed:r[12],shipped:r[10]}),saveOrderState(){}});
+vm.runInContext(source.slice(source.indexOf('    function syncWalletOrderHistory'),source.indexOf('    async function refreshPaymentCases')),ctx);
+const row=[1,7,'key','alice',1100,11000000,'bob',300000,11000000,'encrypted',false,null,false,false,false];
+const state=[null,null,null,{7:[7,'Item']},{1:row}];
+ctx.syncWalletOrderHistory(state,'market','alice');assert.equal(ctx.orders.length,1);assert.equal(ctx.sellerOrders.length,0);assert.equal(ctx.orders[0].xtm,11);assert.equal(ctx.orders[0].status,'In escrow');
+row[13]=true;ctx.syncWalletOrderHistory(state,'market','alice');assert.equal(ctx.orders.length,1);assert.equal(ctx.orders[0].status,'Released');
+ctx.walletConnection.accountAddress='bob';ctx.syncWalletOrderHistory(state,'market','alice');assert.equal(ctx.sellerOrders.length,0);
+ctx.syncWalletOrderHistory(state,'market','bob');assert.equal(ctx.sellerOrders.length,1);assert.equal(ctx.sellerOrders[0].listingId,123);assert.equal(ctx.sellerOrders[0].encryptedDelivery,'encrypted');
+ctx.walletConnection.accountAddress='stranger';ctx.syncWalletOrderHistory(state,'market','stranger');assert.equal(ctx.orders.length,1);assert.equal(ctx.sellerOrders.length,1);
+console.log('Cross-device order recovery, wallet isolation, wallet-switch race, deduplication, status updates and seller delivery reference checks passed.');
