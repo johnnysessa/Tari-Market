@@ -99,7 +99,7 @@
     const SECURITY_UPGRADE_READY=true;
     const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,PREVIOUS_MARKET_COMPONENT,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
     const newPurchasesReady=()=>Boolean(MARKET_COMPONENT_ADDRESS)&&ITEM_PRICE_FEE_READY&&SECURITY_UPGRADE_READY&&SELLER_USERNAMES_READY;
-    const MAX_TRANSACTION_FEE=5000;
+    const MAX_TRANSACTION_FEE=20000;
     const ESMERALDA_NETWORK_BYTE=38;
     const PRICE_URL='https://api.coingecko.com/api/v3/simple/price?ids=minotari&vs_currencies=usd&include_last_updated_at=true';
     const bundledRates={xtmUsd:0.00169228,updatedAt:1789299790000};
@@ -394,7 +394,22 @@
       if(walletConnection.transport==='local')return window.xtmLocalWallet.request(method,params);
       if(walletConnection.transport==='window.tari'){
         if(!hasAvailableTariProvider())throw new Error('The Tari wallet provider is no longer available.');
-        return window.tari.request({method,params})
+        // tari_signAndSubmitTransaction is one long-lived request/response round trip through the
+        // extension's page<->content-script<->background relay -- for a real submission (never for
+        // dryRun, which returns immediately with no approval wait) that round trip can run minutes
+        // long, and something in that chain can drop the final response even though the underlying
+        // transaction executes fine on-chain (confirmed directly against the indexer: transactions
+        // this dropped were still committed). window.tari.requestTransaction() does the same create
+        // -> wait for approval -> submit sequence as a series of short, independent polls instead of
+        // one giant pending call, so a single dropped response just means the next poll (a fresh
+        // request) picks up the persisted status instead of hanging forever.
+        const call=(method==='tari_signAndSubmitTransaction'&&params&&params.dryRun!==true)
+          ?window.tari.requestTransaction({kind:'instructions',instructions:params.instructions,maxFee:params.maxFee,inputs:params.inputs})
+          :window.tari.request({method,params});
+        return new Promise((resolve,reject)=>{
+          const timer=setTimeout(()=>reject(new Error('Wallet request timed out. Check your wallet before retrying.')),120000);
+          call.then(value=>{clearTimeout(timer);resolve(value)},err=>{clearTimeout(timer);reject(err)});
+        });
       }
       if(!walletConnection.client||!walletConnection.session)throw new Error('Connect your Tari wallet first.');
       return walletConnection.client.request({topic:walletConnection.session.topic,chainId:WALLETCONNECT_CHAIN,request:{method,params}})
@@ -477,7 +492,24 @@
       const finalize=response.finalize||response.result;
       const decision=finalize&&typeof finalize==='object'?finalize.result:null;
       if(['Rejected','Failed','Aborted','InvalidTransaction','OnlyFeeAccepted'].includes(status)||decision&&(Object.hasOwn(decision,'Reject')||Object.hasOwn(decision,'AcceptFeeRejectRest')))return 'rejected';
-      return status==='Accepted'&&decision&&Object.hasOwn(decision,'Accept')?'accepted':'pending';
+      if(status==='Accepted'&&decision&&Object.hasOwn(decision,'Accept'))return 'accepted';
+
+      // window.tari's tari_getTransactionResult returns the indexer's own raw envelope, not the
+      // WalletConnect/local-daemon {status,result} shape the checks above expect -- neither
+      // `response.status` nor `finalize.result` exist on it, so every check above silently falls
+      // through to 'pending' forever, even for a transaction that finalized instantly. Real shape,
+      // confirmed directly against the indexer: `{ result: { Finalized: { final_decision,
+      // execution_result: { finalize: { result } } } } }` -- `final_decision` is the bare string
+      // "Commit" on success, or an object like `{Abort:"..."}` when the network never ran it at all.
+      const finalized=response.result&&typeof response.result==='object'?response.result.Finalized:null;
+      if(finalized&&typeof finalized==='object'){
+        const finalDecision=finalized.final_decision;
+        const innerResult=finalized.execution_result&&finalized.execution_result.finalize?finalized.execution_result.finalize.result:null;
+        if(finalDecision&&typeof finalDecision==='object')return 'rejected';
+        if(innerResult&&typeof innerResult==='object'&&(Object.hasOwn(innerResult,'Reject')||Object.hasOwn(innerResult,'AcceptFeeRejectRest')))return 'rejected';
+        if(finalDecision==='Commit'&&innerResult&&typeof innerResult==='object'&&Object.hasOwn(innerResult,'Accept'))return 'accepted';
+      }
+      return 'pending';
     }
     function signingAccountAddress(response){
       const account=response?.account||response;
