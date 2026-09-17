@@ -579,3 +579,11 @@ This checks account existence, not sufficient balance or guaranteed transaction
 success. Tests: `node tests/buyer-account.cjs` covers ten account/checkout scenarios;
 the existing provider and security regression checks pass. Live wallet testing is
 still needed. Existing local installations must download the rebuilt launcher ZIP.
+
+
+### Sample catalog replacement
+
+Each visible, in-stock community listing replaces exactly one of the six sample
+items. Sold-out, deleted, and moderated listings do not consume sample slots. Real
+listings appear first; sample counts are calculated before category filtering and
+pagination. Checked by `node tests/sample-catalog.cjs`.

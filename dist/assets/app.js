@@ -967,8 +967,8 @@
     $('#browseAllCategories').onclick=()=>chooseCategory('All');
     $('#listingCategory').innerHTML='<option value="" disabled selected>Choose a category</option>'+Object.entries(CATEGORY_GROUPS).map(([group,categories])=>`<optgroup label="${escapeHtml(group)}">${categories.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('')}</optgroup>`).join('');
     function marketplaceListings(){
-      const isCatalog=item=>seed.some(product=>product.id===item.id),real=listings.filter(item=>!isCatalog(item)&&postVisible(item)),catalogSlots=Math.max(0,seed.length-real.length);
-      return[...real.filter(item=>item.stock>0),...listings.filter(item=>isCatalog(item)&&item.stock>0).slice(0,catalogSlots)]
+      const isCatalog=item=>seed.some(product=>product.id===item.id),real=listings.filter(item=>!isCatalog(item)&&!item.deleted&&item.stock>0&&postVisible(item)),catalogSlots=Math.max(0,seed.length-real.length);
+      return[...real,...listings.filter(item=>isCatalog(item)&&item.stock>0).slice(0,catalogSlots)]
     }
     function renderMarketPagination(totalPages){
       $('#itemsPerPage').value=String(itemsPerPage);
