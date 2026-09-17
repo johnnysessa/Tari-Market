@@ -59,7 +59,7 @@ def transaction():
     return {"transaction": {"V1": {"network": 38, "dry_run": False,
         "instructions": [{"CallMethod": {"method": "create_listing"}}], "inputs": [],
         "nonce": "1789488366123456789", "fee_instructions": [{"CallMethod": {
-            "call": {"Address": ADDRESS}, "method": "pay_fee", "args": [{"Literal": "191388"}]}}]}},
+            "call": {"Address": ADDRESS}, "method": "pay_fee", "args": [{"Literal": "194e20"}]}}]}},
         "seal_signer": {"Derived": {"key_index": 0}}, "other_signers": [], "signatures": [], "lock_ids": []}
 
 

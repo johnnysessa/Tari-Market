@@ -126,7 +126,7 @@ The contract appends `seller_usernames` and `username_owners` to state and adds 
 
 ## Checkout and delivery privacy
 
-The Buy action opens a dedicated purchase screen with item details and payment information. The buyer reviews one item plus seller-set shipping before approving a wallet transaction. The checkout has a ten-minute review window; XTM prices remain fixed while USD reference values can change. Network fees are separate, with a maximum transaction fee of 0.005 XTM in the current request flow.
+The Buy action opens a dedicated purchase screen with item details and payment information. The buyer reviews one item plus seller-set shipping before approving a wallet transaction. The checkout has a ten-minute review window; XTM prices remain fixed while USD reference values can change. Network fees are separate, with a maximum transaction fee of 0.02 tTari in the current request flow.
 
 Recipient name is **optional**: buyers may leave it blank or enter **Resident**. Shipping inputs are separated into street address, apartment/unit, city, state/region, postal code, and country, with applicable fields marked optional.
 
@@ -524,3 +524,40 @@ The hosted Worker and optional local ZIP were rebuilt. These checks do not const
 ### Buyer condition and pricing display
 
 Condition is displayed on listing cards, item details, the purchase item, and the escrow checkout summary. Legacy items without saved condition show **Not specified**. Illustrative USD amounts have been removed from buyer views and order history; the contract’s existing internal reference fields are retained for compatibility. No template or component replacement is required.
+
+
+## Browser-provider checkout recovery (PR #2)
+
+Includes the transaction-result parsing contributed by chironbuilds in PR #2, with
+additional compatibility and recovery protections. Indexer Finalized/Commit/Accept
+responses now confirm successfully; aborted and fee-only transactions are rejected.
+
+Providers with the transaction-request API use bounded create/read/submit calls.
+Only status reads are retried automatically. Public request IDs are saved in the
+browser before submission; a retry or reload checks the same request instead of
+creating another purchase. A timed-out request does not keep polling or initiate a
+later submission. Late responses may save the original request or transaction ID.
+A previously approved request must be finished or rejected in the wallet.
+Request-only providers retain their original submission method with a timeout and
+a persistent guard against duplicate submissions.
+
+If the wallet loses a creation/submission response without returning an ID, the
+site cannot safely determine the outcome: it blocks further submissions from that
+account until the request is reconciled. Do not clear browser storage to bypass
+this protection; check wallet Requests and Transactions. Browser storage and tab
+locks cannot prevent transactions initiated on another device or directly in a wallet.
+
+The maximum network fee is 0.02 tTari for provider, WalletConnect and local Asset
+Vault transactions, consistently displayed and enforced by the updated launcher.
+The optional browser test wallet retains its existing 0.3 tTari cap. These are caps,
+not estimates or guaranteed costs. No marketplace template/component update is needed.
+
+The ZIP must be downloaded again to update an existing local installation. Keep
+walletd running, stop only the old marketplace launcher, and start the new launcher.
+Use the same browser at http://localhost:5180 to retain local delivery keys.
+
+Validation: provider transaction regression checks cover indexer envelopes,
+request-only providers, lost responses, delayed approval, reload recovery, late
+responses, and duplicate blocking; local-wallet tests use a simulated Asset Vault.
+Fresh live browser-extension and Mac Asset Vault listing/checkout confirmation
+remains required. No user wallet transactions were sent during these tests.

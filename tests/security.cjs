@@ -22,7 +22,7 @@ check(()=>{const fee=rust.slice(rust.indexOf('pub fn pay_marketplace_fee'),rust.
 check(()=>{const settle=rust.slice(rust.indexOf('fn settle_order'),rust.indexOf('pub fn pay_marketplace_fee'));assert(settle.indexOf('order.settled = true')<settle.indexOf('escrow_vault.withdraw'));assert(!settle.includes('platform_payment_address'));});
 check(()=>assert(!/<script>([\s\S]*?)<\/script>/.test(html)));
 check(()=>assert(html.includes("script-src 'self' 'wasm-unsafe-eval';")&&!html.includes("script-src 'unsafe-inline'")));
-for(const name of ['app.js','tari-connector.js'])check(()=>{const hash=crypto.createHash('sha384').update(fs.readFileSync('dist/assets/'+name)).digest('base64');assert(html.includes('src="assets/'+name+'" integrity="sha384-'+hash+'"'));});
+for(const name of ['app.js','tari-connector.js','local-wallet.js','shared-media.js','provider-transactions.js'])check(()=>{const hash=crypto.createHash('sha384').update(fs.readFileSync('dist/assets/'+name)).digest('base64');assert(html.includes('src="assets/'+name+'" integrity="sha384-'+hash+'"'));});
 const roles=vm.createContext({walletConnection:{connected:true,accountAddress:'admin'},MARKET_OWNER_ACCOUNT:'owner',MARKET_COMPONENT_ADDRESS:'current',Date});
 vm.runInContext(app.slice(app.indexOf('    let adminRoles='),app.indexOf('    function renderAdminManagement')),roles);
 check(()=>assert.equal(vm.runInContext('isMarketplaceAdmin()',roles),false));

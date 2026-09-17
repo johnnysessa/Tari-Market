@@ -111,9 +111,9 @@ class Wallet:
             if any(params.get(name) for name in ("other_signers", "signatures", "lock_ids")):
                 raise WalletError("Additional signers or external input locks are not supported.")
             expected_fee = [{"CallMethod": {"call": {"Address": account["component_address"]},
-                "method": "pay_fee", "args": [{"Literal": "191388"}]}}]
+                "method": "pay_fee", "args": [{"Literal": "194e20"}]}}]
             if body.get("fee_instructions") != expected_fee:
-                raise WalletError("Network fee must be capped at 0.005 XTM from the connected account.")
+                raise WalletError("Network fee must be capped at 0.02 tTari from the connected account.")
             if not isinstance(body.get("instructions"), list) or not 1 <= len(body["instructions"]) <= 16:
                 raise WalletError("Invalid instruction count.")
             detected = self.rpc("transactions.detect_inputs", {"transaction": tx, "use_unversioned": True})["transaction"]

@@ -99,7 +99,7 @@
     const SECURITY_UPGRADE_READY=true;
     const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,PREVIOUS_MARKET_COMPONENT,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
     const newPurchasesReady=()=>Boolean(MARKET_COMPONENT_ADDRESS)&&ITEM_PRICE_FEE_READY&&SECURITY_UPGRADE_READY&&SELLER_USERNAMES_READY;
-    const MAX_TRANSACTION_FEE=5000;
+    const MAX_TRANSACTION_FEE=20000;
     const ESMERALDA_NETWORK_BYTE=38;
     const PRICE_URL='https://api.coingecko.com/api/v3/simple/price?ids=minotari&vs_currencies=usd&include_last_updated_at=true';
     const bundledRates={xtmUsd:0.00169228,updatedAt:1789299790000};
@@ -394,7 +394,8 @@
       if(walletConnection.transport==='local')return window.xtmLocalWallet.request(method,params);
       if(walletConnection.transport==='window.tari'){
         if(!hasAvailableTariProvider())throw new Error('The Tari wallet provider is no longer available.');
-        return window.tari.request({method,params})
+        if(method==='tari_signAndSubmitTransaction'&&params.dryRun!==true)return window.xtmProviderTransactions.submit(window.tari,walletConnection.accountAddress,params);
+        return window.xtmProviderTransactions.bounded(()=>window.tari.request({method,params}))
       }
       if(!walletConnection.client||!walletConnection.session)throw new Error('Connect your Tari wallet first.');
       return walletConnection.client.request({topic:walletConnection.session.topic,chainId:WALLETCONNECT_CHAIN,request:{method,params}})
@@ -477,7 +478,24 @@
       const finalize=response.finalize||response.result;
       const decision=finalize&&typeof finalize==='object'?finalize.result:null;
       if(['Rejected','Failed','Aborted','InvalidTransaction','OnlyFeeAccepted'].includes(status)||decision&&(Object.hasOwn(decision,'Reject')||Object.hasOwn(decision,'AcceptFeeRejectRest')))return 'rejected';
-      return status==='Accepted'&&decision&&Object.hasOwn(decision,'Accept')?'accepted':'pending';
+      if(status==='Accepted'&&decision&&Object.hasOwn(decision,'Accept'))return 'accepted';
+
+      // window.tari's tari_getTransactionResult returns the indexer's own raw envelope, not the
+      // WalletConnect/local-daemon {status,result} shape the checks above expect -- neither
+      // `response.status` nor `finalize.result` exist on it, so every check above silently falls
+      // through to 'pending' forever, even for a transaction that finalized instantly. Real shape,
+      // confirmed directly against the indexer: `{ result: { Finalized: { final_decision,
+      // execution_result: { finalize: { result } } } } }` -- `final_decision` is the bare string
+      // "Commit" on success, or an object like `{Abort:"..."}` when the network never ran it at all.
+      const finalized=response.result&&typeof response.result==='object'?response.result.Finalized:null;
+      if(finalized&&typeof finalized==='object'){
+        const finalDecision=finalized.final_decision;
+        const innerResult=finalized.execution_result&&finalized.execution_result.finalize?finalized.execution_result.finalize.result:null;
+        if(finalDecision&&typeof finalDecision==='object')return 'rejected';
+        if(innerResult&&typeof innerResult==='object'&&(Object.hasOwn(innerResult,'Reject')||Object.hasOwn(innerResult,'AcceptFeeRejectRest')))return 'rejected';
+        if(finalDecision==='Commit'&&innerResult&&typeof innerResult==='object'&&Object.hasOwn(innerResult,'Accept'))return 'accepted';
+      }
+      return 'pending';
     }
     function signingAccountAddress(response){
       const account=response?.account||response;
@@ -503,7 +521,7 @@
       const pendingKey='xtm-market-pending-tx:'+identity.account;
       let prior=pendingWalletTransactions.get(pendingKey);try{prior=prior||sessionStorage.getItem(pendingKey)}catch{}
       const remember=id=>{pendingWalletTransactions.set(pendingKey,id);try{sessionStorage.setItem(pendingKey,id)}catch{}};
-      const forget=()=>{pendingWalletTransactions.delete(pendingKey);try{sessionStorage.removeItem(pendingKey)}catch{}};
+      const forget=()=>{if(identity.transport==='window.tari'){const id=pendingWalletTransactions.get(pendingKey)||sessionStorage.getItem(pendingKey);window.xtmProviderTransactions.acknowledge(identity.account,id)}pendingWalletTransactions.delete(pendingKey);try{sessionStorage.removeItem(pendingKey)}catch{}};
       try{
         if(prior){
           const previous=await walletRequest('tari_getTransactionResult',identity.transport==='window.tari'?{transactionId:prior}:{transaction_id:prior});sameWallet();
@@ -513,7 +531,7 @@
           forget();
           if(outcome==='accepted')throw new Error('Your previous transaction completed. Refresh your orders before starting another transaction.');
         }
-        if(!window.confirm(summary+'\n\nMaximum network fee: '+(identity.transport==='testnet'?'0.3 tTari':'0.005 tTari')+'\n\n'+(identity.transport==='testnet'?'Sign and submit with your browser test wallet?':'Continue in your connected Tari wallet?')))throw new Error('Payment cancelled.');
+        if(!window.confirm(summary+'\n\nMaximum network fee: '+(identity.transport==='testnet'?'0.3 tTari':(MAX_TRANSACTION_FEE/1000000)+' tTari')+'\n\n'+(identity.transport==='testnet'?'Sign and submit with your browser test wallet?':'Continue in your connected Tari wallet?')))throw new Error('Payment cancelled.');
         sameWallet();
         const currentAccount=signingAccountAddress(await walletRequest(identity.transport==='window.tari'?'tari_getAccounts':'tari_getDefaultAccount',{}));sameWallet();
         if(String(currentAccount).toLowerCase()!==identity.account.toLowerCase())throw new Error('The wallet account changed. Reconnect before submitting.');
@@ -534,6 +552,7 @@
         const transactionId=submitted?.transactionId||submitted?.transaction_id;
         if(!transactionId)throw new Error('No transaction ID returned. Check your wallet before retrying.');
         remember(transactionId);
+        if(submitted.recovered)throw new Error('Your previous wallet request was submitted. Refresh your orders before starting another transaction.');
         if(transactionOutcome(submitted)==='rejected'){forget();throw new Error('Ootle rejected the transaction.')}
         if(transactionOutcome(submitted)==='accepted'){forget();return {transactionId,result:submitted}}
         for(let attempt=0;attempt<60;attempt++){
@@ -793,7 +812,7 @@
       renderAdminManagement();
       renderPaymentCases();if(walletConnection.connected&&['cases','moderation','recent','received'].includes(pageFromHash()))refreshPaymentCases();
       const connected=walletConnection.connected;
-      $('#checkoutFeeCap').textContent=walletConnection.transport==='testnet'?'Separate · up to 0.3 tTari':'Separate · up to 0.005 tTari';
+      $('#checkoutFeeCap').textContent=walletConnection.transport==='testnet'?'Separate · up to 0.3 tTari':'Separate · up to '+(MAX_TRANSACTION_FEE/1000000)+' tTari';
       const escrowReady=newPurchasesReady();
       const owner=isMarketplaceAdmin();$('#moderationTab').hidden=!owner;if(!owner){$('#moderationList').innerHTML='';$('#paymentOwnerList').innerHTML='';$('#adminPaymentSync').textContent='';if(paymentAction&&['refund','release'].includes(paymentAction.action)){$('#paymentActionDialog').close();paymentAction=null}}if(!owner&&pageFromHash()==='moderation')setPage('market',false);
       $('#escrowBannerText').textContent=escrowReady?'tTari enters escrow when the purchase completes and stays locked until release or refund. It releases on buyer confirmation or an eligible seller claim after the 14-day purchase window; disputes require an owner decision.':'Purchases will reopen after the new Ootle escrow component is deployed.';
