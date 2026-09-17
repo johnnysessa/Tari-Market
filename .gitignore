@@ -1,4 +1,5 @@
 contracts/xtm_market/target/
+contracts/tari_market_moderation/target/
 
 __pycache__/
 *.pyc
@@ -6,3 +7,9 @@ __pycache__/
 node_modules/
 
 node_modules
+
+dist/server/
+dist/.openai/
+
+.env
+.env.local

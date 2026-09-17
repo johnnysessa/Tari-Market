@@ -1,0 +1,8 @@
+{
+  "name": "tari-market",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-shared-media.mjs"
+  },
+  "type": "module"
+}

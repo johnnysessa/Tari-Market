@@ -1,0 +1,12 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('dist/assets/app.js','utf8');
+const context=vm.createContext({decodeChainValue:v=>v});
+vm.runInContext(source.slice(source.indexOf('    function signingAccountAddress('),source.indexOf('    async function submitInstructions(')),context);
+const owner='component_'+'ab'.repeat(32),other='component_'+'cd'.repeat(32);
+for(const response of [{account:{address:'wallet_esme_different_format',component_address:owner}}, {account:{address:other,component_address:owner}}, {component_address:owner},[owner],owner,{account_address:owner},{address:owner}])assert.equal(context.signingAccountAddress(response),owner);
+for(const response of [null,{},[],{account:{address:'not-a-component'}},{account:{component_address:'malformed',address:owner}}])assert.equal(context.signingAccountAddress(response),'');
+assert.notEqual(context.signingAccountAddress({account:{component_address:other}}),owner);
+assert.equal(context.signingAccountAddress({account:{component_address:owner.toUpperCase()}}),owner);
+assert(source.includes('const currentAccount=signingAccountAddress(await walletRequest('));
+assert(source.includes("if(String(currentAccount).toLowerCase()!==identity.account.toLowerCase())throw new Error('The wallet account changed. Reconnect before submitting.');"));
+console.log('Signing account: component precedence, wallet formats, malformed responses and changed-account rejection passed.');

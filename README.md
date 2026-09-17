@@ -48,7 +48,7 @@ The launcher binds only to loopback, rejects foreign hosts/origins, exposes a na
 
 **Validation:** seven simulated-wallet integration tests cover approval, rejection, response-loss recovery, input integrity, fee/network checks, request ownership, duplicate blocking, and the HTTP boundary. The existing 66 JavaScript regression checks also pass. This is not yet an end-to-end result with a live Mac wallet. The next check is the user's first listing followed by a test purchase.
 
-The localhost origin has separate listings, orders, photos and delivery-decryption keys from the public site. These are not copied automatically. Cross-device catalog synchronization remains unimplemented. The template and component have not changed for this connection update.
+The localhost origin retains separate local orders and delivery-decryption keys. Updated public and localhost clients share listing photos and descriptions through the hosted media service; eligible originals are recovered automatically from their original browser. Historical wallet-only updates did not change the template or component.
 
 ## Latest website updates
 
@@ -95,7 +95,7 @@ Admin navigation is an interface convenience; the contract's signer checks enfor
 - Example catalog items and sample seller feedback are clearly identified. Catalog items can be previewed but cannot be purchased.
 - A required legal-use notice describes prohibited goods, user responsibilities, and limits of recovery and liability.
 
-Listing metadata, photos, inventory display, and local order history are partly browser-local. The project does not yet provide a durable shared catalogue database or full cross-device order-history recovery.
+Listing photos and descriptions now use shared object storage after a successful upload. Chain inventory remains authoritative. Browser-local originals are retained for recovery. Local order history and private delivery keys still require the original browser; full cross-device order-history recovery is not implemented.
 
 ## Wallet-linked seller usernames
 
@@ -407,3 +407,88 @@ Older v0.11 listings show **Relist to enable editing**. The original seller appr
 The v0.12 template passed 14 Rust unit tests and isolated live Esmeralda seller edit/delete and unauthorized-wallet rejection scenarios. The UI regression covers relisting guards, duplicate recovery, metadata retention, component-ID collisions and catalog reconciliation. Full buyer-to-seller lifecycle regression testing on v0.12 is still pending.
 
 Current deployment identities and accepted transaction IDs are recorded in `contracts/deployment/esmeralda.json`; rollout notes are in `contracts/deployment/LISTING_MANAGEMENT_ROLLOUT.md`.
+
+## Owner post removal
+
+**Remove posts** appears when the original AllGasNoBrakes owner account is connected.
+The owner can review current and previous marketplace listings, enter a public reason,
+and approve **Remove post** in the wallet. **Restore post** reverses a mistaken removal.
+Delegated dispute admins do not receive this separate owner-only permission.
+
+Removal is a shared, owner-signed on-chain visibility registry, not local browser
+storage. Updated public and local Tari Market clients read it on startup, every
+30 seconds, and before checkout. They hide removed listings and block checkout when
+moderation cannot be verified. The exact registry template, owner signing key, and
+native `OwnerRule::None` are verified before trusting its state. Each change checks
+the original owner's transaction signing key inside the contract.
+
+This does not erase immutable listing records or prevent transactions sent directly
+to the original marketplace contract, including through old clients. Existing
+orders, escrow balances, refunds, and seller-owned listing records are unchanged.
+Removal reasons are public; do not include private customer information.
+
+The separate registry is deployed on Esmeralda; identifiers, artifact hash, and
+accepted publication/creation receipts are recorded in
+`contracts/deployment/post-moderation.json`. Its deployer receives no moderation
+rights. It has no vaults, transfers, ownership reassignment, or marketplace upgrade
+capability. No replacement marketplace component or listing migration is required.
+The WASM artifact and Rust source are included in this repository.
+
+For the local launcher, download the updated ZIP, stop only the launcher, replace
+its extracted folder, and run `python3 start.py` again with the same limited API-key
+permissions. Keep walletd running. Reload `http://localhost:5180` and connect the
+owner account. Existing installations do not update automatically.
+
+Validation: six Rust permission/input tests, frontend removal/restoration and
+checkout-guard tests, existing seller-listing tests, and 67 security checks passed.
+A live Esmeralda attempt by the disposable deploying wallet was rejected by the
+owner check and left the registry empty. No user listing was removed during testing.
+The first owner-approved live removal still requires the owner's wallet approval.
+
+### Asset Vault signing-account check
+
+Transaction submission now reads `component_address` before Asset Vault's separate
+`address` field, matching login and reconnect. Unsupported or malformed identities
+still fail closed, and an actual change of signing account still stops submission.
+Regression coverage: `node tests/signing-account.cjs` plus existing wallet reconnect,
+post moderation, and security checks. Local users need the refreshed launcher bundle.
+
+
+## Shared listing photos
+
+New listing creation uploads photos to the shared media service after the listing
+transaction succeeds. Public and localhost clients fetch the same saved image URLs
+and descriptions. **My Items → Manage photos** lets sellers share saved originals or
+upload replacements. A failed photo upload is reported separately from successful
+listing publication, so users can retry without creating a duplicate listing.
+
+Existing data-URL originals remain in browser storage. When their original browser
+opens the updated site, recovery checks for missing shared metadata and uploads only
+when it holds that listing's private delivery key. Recovery does not require a wallet
+transaction or export a private key. Connecting a wallet on a new device does not
+recover that private key. If original photos are gone they must be selected again;
+if the original listing key is also gone, the current contract requires a new listing.
+No original image is claimed to have been recovered until an upload succeeds.
+
+The Worker stores image bytes and manifests in Sites-managed R2 (`BUCKET`). Uploads
+require proof of possession of the RSA private key whose public key is recorded in
+the verified marketplace listing. The server encrypts a fresh random challenge to
+that public key. A short-lived HMAC ticket binds the proof to the listing, exact
+content digest, expiry, and current manifest ETag. The browser decrypts the challenge
+locally; keys and shipping data are never uploaded. Conditional writes prevent old
+or concurrent tickets from overwriting a newer manifest. CORS permits only the
+published site and local launcher origins. Read endpoints are intentionally public.
+Only bounded PNG/JPEG/WebP uploads are accepted; no SVG or executable content.
+
+No blockchain template/component upgrade is needed. The added server-side runtime
+secret `MEDIA_UPLOAD_SECRET` is managed through Sites, never committed or sent to
+the browser. `npm run build` emits a dependency-free Worker with the existing static
+assets embedded; the local launcher remains a self-contained static client calling
+the same shared media API. Run the Sites build helper for deployment.
+
+Validation: `node tests/shared-media.mjs` checks valid uploads, private-key proof,
+content tampering, independent-client photo reads, exact bytes, safe retries,
+concurrent updates, replay, type validation, origins, chain identity, and storage
+failures. `node tests/shared-media-client.cjs` checks recovery without wallet login,
+original preservation, deduplication, listing binding and URL validation. Existing
+wallet, listing management, moderation and security checks remain in place.

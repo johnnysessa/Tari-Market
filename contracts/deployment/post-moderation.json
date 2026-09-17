@@ -1,0 +1,12 @@
+{
+  "network": "esmeralda",
+  "template": "template_8ba3b838f72caf31b7dc9e45bfbcb58dd7d5cbbebbfd6993cd51396dda3d5583",
+  "component": "component_c8ea0a2b4bb31da5a80006b5047123d871bb495706e4b4040425763ac9914725",
+  "owner_signer": "d6197976d6706266852488070238710d1ee24f49f5dcbb1b8543cf5ba05cf828",
+  "owner_rule": "None",
+  "artifact_sha256": "ba8c5bf68005cf94016faa28d57ecdf95b625d3811264499b797511bbcc87742",
+  "publish_transaction": "4287c93d84c7f06269813168ecb8b58a09c3f44051c7eb9f5be3e2ddd831b662",
+  "creation_transaction": "4d30a98ee9959b3c7596afc61b33714a48f5ac33867d4c6cc496191e80fa44a9",
+  "unauthorized_deployer_test": "836b99571805c0684048739659dadefb33d9e78043478668f9ed9acc90184595",
+  "scope": "Owner-signed Tari Market listing visibility only. No escrow, transfer or market-upgrade capability."
+}
