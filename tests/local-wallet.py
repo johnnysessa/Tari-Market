@@ -80,6 +80,39 @@ class Tests(unittest.TestCase):
         self.assertEqual([m for m, _ in self.wallet.calls].count("transaction_requests.submit"), 1)
         self.assertEqual(self.wallet.created_transaction["V1"]["nonce"], 1789488366123456789)
 
+    def test_listing_uses_one_detection_and_still_simulates_exact_request(self):
+        params = transaction()
+        params["transaction"]["V1"]["instructions"][0]["CallMethod"]["call"] = {"Address": mod.MARKET_COMPONENT}
+        self.wallet.create_request(params)
+        methods = [m for m, _ in self.wallet.calls]
+        self.assertEqual(methods.count("transactions.detect_inputs"), 1)
+        self.assertEqual(methods.count("transactions.submit_dry_run"), 1)
+        self.assertLess(methods.index("transactions.submit_dry_run"), methods.index("transaction_requests.create"))
+        dry = next(p for m, p in self.wallet.calls if m == "transactions.submit_dry_run")
+        self.assertEqual(dry["transaction"], self.wallet.created_transaction)
+
+    def test_listing_optimization_never_skips_failed_simulation(self):
+        original = self.wallet.rpc
+        def rpc(method, params):
+            if method == "transactions.submit_dry_run":
+                raise mod.WalletError("Simulation unavailable")
+            return original(method, params)
+        self.wallet.rpc = rpc
+        params = transaction()
+        params["transaction"]["V1"]["instructions"][0]["CallMethod"]["call"] = {"Address": mod.MARKET_COMPONENT}
+        with self.assertRaises(mod.WalletError): self.wallet.create_request(params)
+        self.assertIsNone(self.wallet.created_transaction)
+
+    def test_other_contracts_and_mixed_instructions_keep_full_detection(self):
+        for mixed in (False, True):
+            wallet = FakeWallet()
+            params = transaction()
+            params["transaction"]["V1"]["instructions"][0]["CallMethod"]["call"] = {"Address": mod.MARKET_COMPONENT if mixed else ADDRESS}
+            if mixed:
+                params["transaction"]["V1"]["instructions"].append({"CallMethod": {"method": "confirm_receipt_and_review"}})
+            wallet.create_request(params)
+            self.assertEqual([m for m, _ in wallet.calls].count("transactions.detect_inputs"), 2)
+
     def test_recursive_inputs_include_recipient_vault_before_simulation(self):
         original = self.wallet.rpc
         recipient, vault = "component_" + "c" * 64, "vault_" + "d" * 64
@@ -97,7 +130,9 @@ class Tests(unittest.TestCase):
                 self.assertIn(vault, [x["substate_id"] for x in params["transaction"]["V1"]["inputs"]])
             return result
         self.wallet.rpc = rpc
-        self.wallet.create_request(transaction())
+        params = transaction()
+        params["transaction"]["V1"]["instructions"][0]["CallMethod"] = {"call": {"Address": mod.MARKET_COMPONENT}, "method": "confirm_receipt_and_review"}
+        self.wallet.create_request(params)
         self.assertEqual(len(passes), 3)
         dry = next(p for m, p in self.wallet.calls if m == "transactions.submit_dry_run")
         self.assertEqual(dry["transaction"], self.wallet.created_transaction)

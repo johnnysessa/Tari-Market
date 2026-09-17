@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlsplit
 
 ORIGIN = "http://localhost:5180"
 WALLET_URL = "http://127.0.0.1:5100/json_rpc"
+MARKET_COMPONENT = "component_cade995859ea67035bed27bfc95dfca41e26914f529b862bf2def5467b706938"
 MAX_BODY = 512 * 1024
 PERMISSIONS = "accounts:read, transactions:read, transaction_requests:create, transaction_requests:read"
 
@@ -119,7 +120,14 @@ class Wallet:
                 raise WalletError("Network fee must be capped at 0.02 tTari from the connected account.")
             if not isinstance(body.get("instructions"), list) or not 1 <= len(body["instructions"]) <= 16:
                 raise WalletError("Invalid instruction count.")
-            detected = self.resolve_inputs(tx)
+            # The reviewed v0.12 create_listing only changes marketplace state.
+            # It never deposits into another account. One detection pass is enough
+            # if the exact resulting transaction also passes simulation below.
+            calls = body["instructions"]
+            call = calls[0].get("CallMethod") if len(calls) == 1 and isinstance(calls[0], dict) else None
+            listing_only = (isinstance(call, dict) and call.get("method") == "create_listing" and
+                            call.get("call") == {"Address": MARKET_COMPONENT})
+            detected = self.resolve_inputs(tx, expand=not listing_only)
             # Simulate this exact input set; never let simulation silently repair it.
             # walletd v0.40 authorizes this non-finalizing endpoint with transactions:read.
             simulation = self.rpc("transactions.submit_dry_run", {
@@ -149,12 +157,13 @@ class Wallet:
             self._uncertain = False
             return {"approval_request_id": request_id}
 
-    def resolve_inputs(self, transaction):
+    def resolve_inputs(self, transaction, expand=True):
         """Expand indirect account dependencies before freezing the approval request.
 
         walletd v0.40 includes component references without recursively expanding
         their vaults. Feeding detected inputs back makes those accounts roots.
         Bound the traversal and fail closed if it cannot reach a stable set.
+        Listing creation may stop after one pass, but must still pass simulation.
         """
         def instructions(tx):
             if not isinstance(tx, dict) or set(tx) != {"V1"} or not isinstance(tx["V1"], dict):
@@ -186,7 +195,7 @@ class Wallet:
             current = inputs(detected)
             if not previous.issubset(current):
                 raise WalletError("Input detection removed a required transaction input.")
-            if current == previous:
+            if not expand or current == previous:
                 return detected
             previous, transaction = current, detected
         raise WalletError("Could not finish resolving transaction dependencies. Nothing was submitted.")

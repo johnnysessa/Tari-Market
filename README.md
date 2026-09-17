@@ -643,3 +643,18 @@ wallet transports retain their own validation. Download the updated local bundle
 
 Upstream references: [v0.40 input resolver](https://github.com/tari-project/tari-ootle/blob/v0.40.0/crates/wallet/sdk/src/apis/substate.rs)
 and [detection and dry-run handlers](https://github.com/tari-project/tari-ootle/blob/v0.40.0/applications/tari_walletd/src/handlers/transaction.rs).
+
+
+## Faster local listing preparation
+
+For a single `create_listing` call on the current v0.12 marketplace, the local launcher now
+runs input detection once instead of expanding all indirectly referenced accounts to a stable set.
+The contract only records the listing; it does not pay a recipient. The exact prepared transaction
+must still pass the no-fee simulation and fee-cap check before the separate approval request is
+created. Payment releases, refunds, other contracts, and mixed instruction batches retain full
+dependency expansion. This reduces preparation work, not testnet consensus time; no live timing
+improvement has been measured yet. Thirteen simulated-wallet tests pass, including the listing
+shortcut and the original missing-recipient-vault regression.
+
+The user confirmed a successful receipt release with the previous vault-resolution fix on
+September 17. This is one reported end-to-end result, not validation of every payment path.
