@@ -602,3 +602,19 @@ product details and checkout. Checkout also rejects the seller account before
 submission. This is a website guard; it does not change the deployed contract.
 Tests: `node tests/stock-and-owner.cjs` plus listing, catalog, buyer-account and
 security regression checks. Download the rebuilt ZIP for existing local installs.
+
+
+### Receipt confirmation feedback and recovery
+
+The receipt/review dialog now shows progress and errors inside the dialog and
+disables repeated submission while processing. It verifies buyer ownership and
+order status before requesting release. Successful confirmation immediately closes
+the dialog and refreshes the displayed order. A lost wallet response triggers a
+read-only order refresh: verified settled orders are reflected without sending
+another transaction. Pending/unknown outcomes remain visible with instructions to
+check the wallet. Reconciliation reports settlement without claiming a review was
+posted when its transaction response is unavailable.
+
+Validation: `node tests/receipt-confirmation.cjs`, provider transaction checks and
+security checks. Live user-wallet confirmation remains to be checked. Existing
+local users must download the refreshed launcher.

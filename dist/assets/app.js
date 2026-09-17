@@ -1269,10 +1269,46 @@
     const walletDialog=$('#walletDialog');$('#walletButton').onclick=()=>openWalletConnection();$('#closeWalletDialog').onclick=$('#cancelWallet').onclick=()=>walletDialog.close();$('#walletForm').onsubmit=connectWallet;$('#walletConnectionMethod').onchange=()=>{browserUnlockPending=false;$('#pairingPanel').classList.remove('show');$('#pairingUri').value='';renderWalletConnectionChoice()};$('#disconnectWallet').onclick=disconnectWallet;
     $('#closeProfile').onclick=()=>$('#profileDialog').close();
     $('#closeProduct').onclick=()=>$('#productDialog').close();
-    let receiptReviewComponent=MARKET_COMPONENT_ADDRESS;
-    function openReceiptReview(orderId,component=MARKET_COMPONENT_ADDRESS){if(!TRUSTED_MARKET_COMPONENTS.has(component))return;receiptReviewComponent=component;$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewDialog').showModal()}
-    $('#closeReceiptReview').onclick=$('#cancelReceiptReview').onclick=()=>$('#receiptReviewDialog').close();
-    $('#receiptReviewForm').onsubmit=async event=>{event.preventDefault();const component=receiptReviewComponent;if(!TRUSTED_MARKET_COMPONENTS.has(component))return;const orderId=Number($('#receiptReviewOrder').value),stars=Number($('#receiptReviewStars').value),comment=$('#receiptReviewComment').value.trim();if(!Number.isInteger(stars)||stars<1||stars>5){toast('Choose a one-to-five-star rating');return}if(!comment){toast('A written review comment is required');return}if(!reviewCommentsReady){toast('Receipt confirmation with review requires the v0.5 market component');return}if(!walletConnection.connected){$('#receiptReviewDialog').close();$('#walletDialog').showModal();return}try{await submitInstructions([componentCall(component,'confirm_receipt_and_review',[literal(cborHead(0,orderId)),literal(cborHead(0,stars)),literal(cborText(comment))])],`Confirm receipt, leave ${stars} stars, and release escrow`);const order=orders.find(candidate=>candidate.marketComponent===component&&candidate.chainOrderId===orderId);if(order){order.status='Released';order.review={stars,comment}}sellerOrders.forEach(order=>{if(order.marketComponent===component&&order.chainOrderId===orderId)order.status='Released'});saveOrderState();$('#receiptReviewDialog').close();await refreshTrustScores();toast('Receipt confirmed, review posted, and escrow released')}catch(error){toast(error.message||'Receipt confirmation and payment release were not approved')}};
+    let receiptReviewComponent=MARKET_COMPONENT_ADDRESS,receiptReviewBusy=false;
+    function openReceiptReview(orderId,component=MARKET_COMPONENT_ADDRESS){if(receiptReviewBusy||!TRUSTED_MARKET_COMPONENTS.has(component))return;receiptReviewComponent=component;$('#receiptReviewOrder').value=orderId;$('#receiptReviewStars').value='';$('#receiptReviewComment').value='';$('#receiptReviewStatus').textContent='';$('#receiptReviewDialog').showModal()}
+    $('#closeReceiptReview').onclick=$('#cancelReceiptReview').onclick=()=>{if(!receiptReviewBusy)$('#receiptReviewDialog').close()};
+    $('#receiptReviewDialog').addEventListener('cancel',event=>{if(receiptReviewBusy)event.preventDefault()});
+    async function submitReceiptReview(event){
+      event.preventDefault();if(receiptReviewBusy)return;
+      const component=receiptReviewComponent,orderId=Number($('#receiptReviewOrder').value),stars=Number($('#receiptReviewStars').value),comment=$('#receiptReviewComment').value.trim(),account=walletConnection.accountAddress;
+      const status=$('#receiptReviewStatus'),button=$('#receiptReviewSubmit');
+      if(!TRUSTED_MARKET_COMPONENTS.has(component)||!safeId(orderId)){status.textContent='Select a valid order.';return}
+      if(!Number.isInteger(stars)||stars<1||stars>5||!comment){status.textContent='Choose a rating and enter a written review.';return}
+      if(!walletConnection.connected){status.textContent='Connect the buyer wallet before confirming receipt.';return}
+      const sameWallet=()=>walletConnection.connected&&walletConnection.accountAddress===account;
+      const currentOrder=()=>paymentRows().find(row=>row.component===component&&row.id===orderId&&row.verified&&paymentOwnedBy(row,account));
+      const refresh=async()=>{await refreshPaymentCases();if(!sameWallet())throw new Error('Wallet changed. Reconnect the buyer wallet and refresh your orders.');return currentOrder()};
+      const finish=message=>{saveOrderState();renderOrders();void renderSellerOrders();$('#receiptReviewDialog').close();toast(message);void refreshTrustScores().catch(()=>{})};
+      receiptReviewBusy=true;button.disabled=true;button.textContent='Checking order…';status.textContent='Checking the latest order status before requesting payment release.';
+      for(const id of ['#closeReceiptReview','#cancelReceiptReview','#receiptReviewStars','#receiptReviewComment'])$(id).disabled=true;
+      try{
+        const before=await refresh();
+        if(!before)throw new Error('Could not verify this order for your buyer wallet. No new request was sent.');
+        if(before.settled){finish(before.refunded?'This order was already refunded. Orders refreshed.':'This order was already settled. Orders refreshed.');return}
+        if(before.disputed)throw new Error('This order has an open dispute. Wait for its resolution before confirming receipt.');
+        button.textContent='Waiting for wallet…';status.textContent='Approve the receipt confirmation in your wallet. Keep this page open; do not submit again.';
+        await submitInstructions([componentCall(component,'confirm_receipt_and_review',[literal(cborHead(0,orderId)),literal(cborHead(0,stars)),literal(cborText(comment))])],`Confirm receipt, leave ${stars} stars, and release escrow`);
+        if(!sameWallet())throw new Error('Wallet changed. Refresh your orders with the buyer wallet.');
+        const order=orders.find(row=>row.marketComponent===component&&row.chainOrderId===orderId);
+        if(order){order.status='Released';order.review={stars,comment}}
+        sellerOrders.forEach(row=>{if(row.marketComponent===component&&row.chainOrderId===orderId)row.status='Released'});
+        finish('Receipt confirmed, review posted, and escrow released.');
+      }catch(error){
+        button.textContent='Checking transaction…';status.textContent='Checking whether the order completed. No second transaction will be sent.';
+        let reconciled;try{if(sameWallet())reconciled=await refresh()}catch{}
+        if(reconciled?.settled){finish(reconciled.refunded?'This order is refunded. Orders refreshed.':'The order is settled on-chain. Orders refreshed.');}
+        else status.textContent=(error.message||'Receipt confirmation could not be verified.')+' Check your wallet before retrying; a pending transaction may still complete.';
+      }finally{
+        receiptReviewBusy=false;button.disabled=false;button.textContent='Confirm receipt & release payment';
+        for(const id of ['#closeReceiptReview','#cancelReceiptReview','#receiptReviewStars','#receiptReviewComment'])$(id).disabled=false;
+      }
+    }
+    $('#receiptReviewForm').onsubmit=submitReceiptReview;
     $('#closeReviewDispute').onclick=$('#cancelReviewDispute').onclick=()=>$('#reviewDisputeDialog').close();
     $('#reviewDisputeForm').onsubmit=async event=>{event.preventDefault();if(!reviewCommentsReady){toast('Seller disputes require the v0.5 market component');return}if(!walletConnection.connected){$('#reviewDisputeDialog').close();$('#walletDialog').showModal();return}const orderId=Number($('#reviewDisputeOrder').value),reason=$('#reviewDisputeReason').value.trim();if(!reason)return;try{await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'dispute_review',[literal(cborHead(0,orderId)),literal(cborText(reason))])],'Dispute this seller review');$('#reviewDisputeDialog').close();await refreshTrustScores();toast('Review dispute sent to the marketplace owner')}catch(error){toast(error.message||'The review dispute was not approved')}};
     $('#copyPairing').onclick=async()=>{const uri=$('#pairingUri').value;if(!uri)return;try{await navigator.clipboard.writeText(uri);toast('Pairing link copied')}catch{toast('Select and copy the pairing link')} };
