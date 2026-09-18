@@ -1239,11 +1239,30 @@
     function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
     const legalDialog=$('#legalDialog'),legalAccept=$('#legalAccept'),legalEnter=$('#legalEnter');
     function legalNoticeAccepted(){try{return sessionStorage.getItem('xtm-market-legal-notice-v2')==='accepted'}catch{return false}}
-    function showLegalNotice(){if(!legalNoticeAccepted()&&!legalDialog.open)legalDialog.showModal()}
-    $('#legalReopen').addEventListener('click',()=>{legalAccept.checked=legalNoticeAccepted();legalEnter.disabled=!legalAccept.checked;legalDialog.showModal()});
+    let legalReachedBottom=false;
+    function updateLegalScroll(){
+      if(!legalDialog.open)return;
+      if(legalDialog.scrollTop+legalDialog.clientHeight>=legalDialog.scrollHeight-8)legalReachedBottom=true;
+      legalAccept.disabled=!legalReachedBottom;
+      legalEnter.disabled=!legalReachedBottom||!legalAccept.checked;
+    }
+    function openLegalNotice(){
+      legalReachedBottom=false;
+      legalAccept.checked=false;
+      legalAccept.disabled=true;
+      legalEnter.disabled=true;
+      legalDialog.showModal();
+      $('#legalTitle').focus({preventScroll:true});
+      legalDialog.scrollTop=0;
+      updateLegalScroll();
+    }
+    function showLegalNotice(){if(!legalNoticeAccepted()&&!legalDialog.open)openLegalNotice()}
+    $('#legalReopen').addEventListener('click',openLegalNotice);
+    legalDialog.addEventListener('scroll',updateLegalScroll);
+    window.addEventListener('resize',updateLegalScroll);
     legalDialog.addEventListener('cancel',event=>event.preventDefault());
-    legalAccept.addEventListener('change',()=>{legalEnter.disabled=!legalAccept.checked});
-    $('#legalForm').addEventListener('submit',event=>{event.preventDefault();if(!legalAccept.checked)return;try{sessionStorage.setItem('xtm-market-legal-notice-v2','accepted')}catch{}legalDialog.close()});
+    legalAccept.addEventListener('change',updateLegalScroll);
+    $('#legalForm').addEventListener('submit',event=>{event.preventDefault();if(!legalReachedBottom||!legalAccept.checked)return;try{sessionStorage.setItem('xtm-market-legal-notice-v2','accepted')}catch{}legalDialog.close()});
     $('#feeBack').onclick=()=>setPage('market');
     $('#purchaseBack').onclick=()=>setPage('market');
     $('#purchaseEscrowHelp').onclick=()=>setPage('escrow');
