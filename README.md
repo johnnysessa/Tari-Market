@@ -665,3 +665,9 @@ September 17. This is one reported end-to-end result, not validation of every pa
 ### September 19, 2026 — local wallet fee fix
 
 Raised the provider, WalletConnect and local Asset Vault network-fee cap to 0.05 tTari. A listing estimate of 20,060 atomic units exceeded the previous 20,000 cap; the new cap is 50,000. Browser test wallets retain their existing 0.3 tTari cap. Simulation, fee validation and explicit wallet approval remain required. Error messages now include the fee estimate and retain the end of simulation rejection details. Existing local installations must update their launcher and site assets together, restart the launcher, and refresh the browser.
+
+## My Profile
+
+Open **My Profile** (or `#my-profile`) after connecting your seller wallet. The profile groups active listings, delisted listings, seller rating and buyer comments, review-dispute status and moderator decisions, and completed sales. Completed sales are verified settled orders excluding refunds; order history includes supported earlier marketplace components. Current-marketplace reviews can be disputed by the original seller with a written reason and wallet approval. Delisting uses `cancel_listing`, prevents new purchases, and leaves existing orders and escrow intact. Earlier listings retain the existing relisting flow before editing or delisting. Refund/payment disputes and fulfillment remain available through the profile’s links. Failed history refreshes are marked as incomplete, and another wallet’s profile data is cleared on disconnect or switching.
+
+The public website is updated when deployed. Existing local launcher folders do not auto-update; install the refreshed download to get My Profile locally. The 0.05 tTari local/provider fee cap and explicit wallet approval remain in place.

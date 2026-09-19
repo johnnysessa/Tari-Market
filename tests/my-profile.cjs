@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('dist/assets/app.js','utf8');
+const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',querySelectorAll:()=>[]});return nodes.get(id)};
+const rows=[{id:1,seller:'alice',verified:true,settled:true,refunded:false,title:'<img onerror=bad>',component:'market'},{id:2,seller:'alice',verified:true,settled:true,refunded:true},{id:3,seller:'alice',verified:true,settled:false},{id:4,seller:'bob',verified:true,settled:true},{id:5,seller:'alice',verified:false,settled:true}];
+const ctx=vm.createContext({walletConnection:{connected:true,accountAddress:'ALICE'},paymentRows:()=>rows,sellerReviews:[{orderId:1,sellerAddress:'alice',stars:5,comment:'Good'},{orderId:2,sellerAddress:'bob',stars:1,comment:'Other wallet'}],sellerOrders:[{marketComponent:'market',chainOrderId:1,sellerAddress:'alice',xtm:9}],usernameListings:new Map([['a',{address:'alice',name:'alice'}]]),trustRatingsReady:true,reviewCommentsReady:true,trustLabel:()=> '5.0 ★',reviewCard:r=>r.comment,escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'),xtm:n=>n+' tTari',MARKET_COMPONENT_ADDRESS:'market',paymentSnapshots:new Map([['market',{error:false}]]),$:get});
+vm.runInContext(source.slice(source.indexOf('    function ownProfileData'),source.indexOf('    let profileRefreshTask')),ctx);
+let data=ctx.ownProfileData();assert.equal(data.sales.length,1);assert.equal(data.pending,1);assert.equal(data.reviews.length,1);
+ctx.renderMyProfile();assert.match(get('#myProfileSales').innerHTML,/&lt;img/);assert(!get('#myProfileSales').innerHTML.includes('<img'));assert.match(get('#myProfileReviews').innerHTML,/data-profile-dispute="1"/);assert(!get('#myProfileReviews').innerHTML.includes('Other wallet'));
+ctx.sellerReviews[0].disputed=true;ctx.renderMyProfile();assert(!get('#myProfileReviews').innerHTML.includes('data-profile-dispute'));assert.match(get('#myProfileReviews').innerHTML,/awaiting moderator/);
+ctx.sellerReviews[0].removed=true;ctx.renderMyProfile();assert.match(get('#myProfileReviews').innerHTML,/Removed from your public rating/);
+ctx.paymentSnapshots.set('old',{error:true});ctx.renderMyProfile();assert.match(get('#myProfileSync').textContent,/incomplete/);
+ctx.walletConnection.accountAddress='bob';ctx.renderMyProfile();assert(!get('#myProfileReviews').innerHTML.includes('Good'));assert(!get('#myProfileSales').innerHTML.includes('&lt;img'));
+ctx.walletConnection.connected=false;ctx.renderMyProfile();assert.equal(get('#myProfileReviews').innerHTML,'');assert.equal(get('#myProfileSales').innerHTML,'');assert.equal(get('#profileConnect').hidden,false);
+console.log('Profile: wallet isolation, completed/non-refunded sales, unverified exclusion, review disputes, removal, escaping, partial history and disconnect checks passed.');

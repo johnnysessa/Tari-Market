@@ -76,17 +76,17 @@
         await refreshTrustScores();if(method==='grant_admin')$('#adminRoleForm').reset();toast('Admin transaction completed. Permissions refreshed.');
       }catch(error){toast(error.message||'Admin update was not approved')}finally{adminRoleBusy=false;renderAdminManagement()}
     }
-    function pageFromHash(){return location.hash==='#remove-posts'?'posts':location.hash==='#my-items'?'myitems':location.hash==='#marketplace-fee'?'fee':location.hash==='#checkout'?'checkout':location.hash==='#refunds-disputes'?'cases':location.hash==='#disputes-refunds'?'disputes':location.hash==='#ootle-escrow'?'escrow':location.hash==='#categories'?'categories':location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':location.hash==='#moderation'?'moderation':'market'}
+    function pageFromHash(){return location.hash==='#remove-posts'?'posts':['#my-items','#my-profile'].includes(location.hash)?'myitems':location.hash==='#marketplace-fee'?'fee':location.hash==='#checkout'?'checkout':location.hash==='#refunds-disputes'?'cases':location.hash==='#disputes-refunds'?'disputes':location.hash==='#ootle-escrow'?'escrow':location.hash==='#categories'?'categories':location.hash==='#recent-orders'?'recent':location.hash==='#orders-received'?'received':location.hash==='#moderation'?'moderation':'market'}
     function setPage(page,updateHash=true){
       const requested=page==='checkout'&&!selected?'market':pageIds[page]?page:'market',next=(requested==='moderation'&&!isMarketplaceAdmin()||requested==='posts'&&!isMarketplaceOwner())?'market':requested;
       if(requested==='moderation'&&next==='market')history.replaceState(null,'',location.pathname+location.search);
       for(const [name,id] of Object.entries(pageIds))document.getElementById(id).hidden=name!==next;
       document.querySelectorAll('[data-page]').forEach(button=>{const active=button.dataset.page===next;button.classList.toggle('active',active);active?button.setAttribute('aria-current','page'):button.removeAttribute('aria-current')});
-      if(updateHash){const hash=next==='posts'?'#remove-posts':next==='myitems'?'#my-items':next==='fee'?'#marketplace-fee':next==='checkout'?'#checkout':next==='cases'?'#refunds-disputes':next==='disputes'?'#disputes-refunds':next==='escrow'?'#ootle-escrow':next==='categories'?'#categories':next==='market'?'':next==='recent'?'#recent-orders':next==='received'?'#orders-received':'#moderation';history.replaceState(null,'',location.pathname+location.search+hash)}
+      if(updateHash){const hash=next==='posts'?'#remove-posts':next==='myitems'?'#my-profile':next==='fee'?'#marketplace-fee':next==='checkout'?'#checkout':next==='cases'?'#refunds-disputes':next==='disputes'?'#disputes-refunds':next==='escrow'?'#ootle-escrow':next==='categories'?'#categories':next==='market'?'':next==='recent'?'#recent-orders':next==='received'?'#orders-received':'#moderation';history.replaceState(null,'',location.pathname+location.search+hash)}
       $('#'+(next==='checkout'?'checkoutPaymentHost':'marketCheckoutHost')).appendChild(document.querySelector('.checkout'));
       if(next==='cases'){renderPaymentCases();refreshPaymentCases()}
       if(next==='posts')refreshPostList();
-      if(next==='myitems')refreshMyItems();
+      if(next==='myitems')refreshMyProfile();
       if(next==='recent'){renderOrders();refreshPaymentCases().then(renderOrders)}
       if(next==='received'){renderSellerOrders();refreshPaymentCases().then(renderSellerOrders)}
       if(next==='moderation'){renderModeration();renderPaymentCases();refreshPaymentCases();refreshTrustScores()}
@@ -184,7 +184,7 @@
         if(reviews&&typeof reviews==='object')for(const [key,value] of Object.entries(reviews)){const review=readReviewValue(value,key);if(review)nextReviews.push(review)}
         refreshUsernameRegistry(state);if(legacy)addLegacyUsernames(legacy);syncMarketListings(state,legacy);sellerTrustScores=next;sellerReviews=nextReviews
       }catch{if(sequence!==roleRefreshSequence)return;for(const item of listings)if(item.chainId)item.inventoryVerified=false;refreshUsernameRegistry(null);adminRolesReady=false;adminRoles.clear();trustRatingsReady=false;reviewCommentsReady=false;sellerTrustScores=new Map();sellerReviews=[]}
-      updateUsernameStatus();render();renderSellerTrust();renderModeration();void refreshSharedMedia()
+      updateUsernameStatus();render();renderSellerTrust();renderMyProfile();renderModeration();void refreshSharedMedia()
     }
     function renderSellerTrust(){
       const panel=$('#sellerTrustPanel'),list=$('#sellerReviewList');if(!panel)return;
@@ -743,21 +743,23 @@
     }
     async function refreshMyItems(){
       const seq=++myItemsSequence,box=$('#myItemsList'),account=walletConnection.accountAddress;
-      if(!walletConnection.connected){myItems=[];box.innerHTML='<div class="none">Connect your wallet to see your items.</div>';return;}
-      box.textContent='Loading your listings…';
+      if(!walletConnection.connected){myItems=[];$('#profileDelisted').innerHTML='';box.innerHTML='<div class="none">Connect your wallet to see your items.</div>';return;}
+      box.textContent='Loading your listings…';$('#profileDelisted').textContent='Loading…';
       try{
         const [state,legacy]=await Promise.all([readListingMarket(MARKET_COMPONENT_ADDRESS),readListingMarket(PREVIOUS_MARKET_COMPONENT)]);
         if(seq!==myItemsSequence||!walletConnection.connected||walletConnection.accountAddress!==account)return;
         const current=listingRows(state,MARKET_COMPONENT_ADDRESS),previous=listingRows(legacy,PREVIOUS_MARKET_COMPONENT).filter(row=>!current.some(next=>sameListingOrigin(row,next)));
         myItems=[...current,...previous].filter(row=>row.paymentAddress===account.toLowerCase()&&row.active);
         syncMarketListings(state,legacy);refreshUsernameRegistry(state);addLegacyUsernames(legacy);render();
+        const delisted=current.filter(row=>row.paymentAddress===account.toLowerCase()&&!row.active);
+        $('#profileDelisted').innerHTML=delisted.length?delisted.map(item=>`<article class="order"><div><strong>${escapeHtml(item.name)}</strong><p>Listing #${item.id} · Delisted</p></div><span class="count">Unavailable for new purchases</span></article>`).join(''):'<div class="none">No delisted items.</div>';
         $('#myItemsAvailability').hidden=true;
-        box.innerHTML=myItems.length?myItems.map(item=>`<article class="order"><div><strong>${escapeHtml(item.name)}</strong><p>${xtm(item.price)} · Shipping ${xtm(item.shipping)} · ${item.stock} available</p>${item.component===PREVIOUS_MARKET_COMPONENT?'<p>Relist once to enable editing and deletion. Your wallet approval is required.</p>':''}</div><div class="order-actions"><button class="button small" data-manage-photos="${item.id}" data-photo-component="${escapeHtml(item.component)}">Manage photos</button>${item.component===MARKET_COMPONENT_ADDRESS?`<button class="button small" data-edit-item="${item.id}">Edit</button><button class="button small danger" data-delete-item="${item.id}">Delete</button>`:`<button class="button small" data-relist-item="${item.id}">Relist to enable editing</button>`}</div></article>`).join(''):'<div class="none">You have no active listings on this marketplace.</div>';
+        box.innerHTML=myItems.length?myItems.map(item=>`<article class="order"><div><strong>${escapeHtml(item.name)}</strong><p>${xtm(item.price)} · Shipping ${xtm(item.shipping)} · ${item.stock} available</p>${item.component===PREVIOUS_MARKET_COMPONENT?'<p>Relist once to enable editing and deletion. Your wallet approval is required.</p>':''}</div><div class="order-actions"><button class="button small" data-manage-photos="${item.id}" data-photo-component="${escapeHtml(item.component)}">Manage photos</button>${item.component===MARKET_COMPONENT_ADDRESS?`<button class="button small" data-edit-item="${item.id}">Edit</button><button class="button small danger" data-delete-item="${item.id}">Delist</button>`:`<button class="button small" data-relist-item="${item.id}">Relist to enable editing</button>`}</div></article>`).join(''):'<div class="none">You have no active listings on this marketplace.</div>';
         box.querySelectorAll('[data-manage-photos]').forEach(button=>button.onclick=()=>openMediaEditor(button.dataset.photoComponent,Number(button.dataset.managePhotos)));
         box.querySelectorAll('[data-edit-item]').forEach(button=>button.onclick=()=>openItemEditor(Number(button.dataset.editItem)));
         box.querySelectorAll('[data-delete-item]').forEach(button=>button.onclick=()=>deleteMyItem(Number(button.dataset.deleteItem)));
         box.querySelectorAll('[data-relist-item]').forEach(button=>button.onclick=()=>relistMyItem(Number(button.dataset.relistItem)));
-      }catch(error){if(seq===myItemsSequence)box.textContent=error.message||'Could not load your listings.';}
+      }catch(error){if(seq===myItemsSequence){box.textContent=error.message||'Could not load your listings.';$('#profileDelisted').textContent='Delisted items could not be loaded. Try Refresh profile.';}}
     }
     async function relistMyItem(id){
       if(myItemsBusy||!walletConnection.connected)return;
@@ -803,11 +805,11 @@
     async function deleteMyItem(id){
       if(!LISTING_MANAGEMENT_READY||myItemsBusy||!walletConnection.connected)return;
       const item=myItems.find(row=>row.id===id&&row.component===MARKET_COMPONENT_ADDRESS);if(!item)return;
-      if(!window.confirm(`Delete ${item.name}? New purchases will stop. Existing orders and escrow remain unchanged.`))return;
+      if(!window.confirm(`Delist ${item.name}? New purchases will stop. Existing orders and escrow remain unchanged.`))return;
       myItemsBusy=true;
       try{
-        await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'cancel_listing',[literal(cborHead(0,id))])],`Delete listing: ${item.name}`);
-        listings=listings.filter(row=>row.marketComponent!==MARKET_COMPONENT_ADDRESS||row.chainId!==id);saveListings();render();await refreshMyItems();toast('Listing deleted');
+        await submitInstructions([componentCall(MARKET_COMPONENT_ADDRESS,'cancel_listing',[literal(cborHead(0,id))])],`Delist listing: ${item.name}`);
+        listings=listings.filter(row=>row.marketComponent!==MARKET_COMPONENT_ADDRESS||row.chainId!==id);saveListings();render();await refreshMyItems();toast('Listing delisted');
       }catch(error){toast(error.message);}finally{myItemsBusy=false;}
     }
     function renderWalletState(){
@@ -825,7 +827,7 @@
       $('#walletDot').classList.toggle('ready',connected);
       $('#walletCheckoutStatus').textContent=connected?`Connected · ${shortAddress(walletConnection.accountAddress)}`:'Tari wallet not connected';
       renderConnectedWallet();refreshListingBuyControls();
-      if(pageFromHash()==='myitems')refreshMyItems();
+      renderMyProfile();if(pageFromHash()==='myitems')refreshMyProfile();
       if(selected){
         const blocked=purchaseBlockReason(selected);
         $('#orderButton').disabled=Boolean(blocked);
@@ -1099,7 +1101,7 @@
         }));
       })();
       renderPaymentCases();
-      try{await paymentRefreshTask}finally{paymentRefreshTask=null;renderPaymentCases()}
+      try{await paymentRefreshTask}finally{paymentRefreshTask=null;renderPaymentCases();renderMyProfile()}
     }
     let newCaseAction='dispute',caseOrderLoading=false;
     function renderCaseOrderPicker(){
@@ -1202,7 +1204,41 @@
       box.querySelectorAll('[data-buyer-action]').forEach(button=>button.onclick=()=>button.dataset.buyerAction==='confirm_receipt'?openReceiptReview(Number(button.dataset.orderId),button.dataset.component):setPage('cases'));
       box.querySelectorAll('[data-submit-review]').forEach(button=>button.onclick=()=>{const id=Number(button.dataset.submitReview),stars=Number(box.querySelector(`[data-review-stars="${id}"]`).value),comment=box.querySelector(`[data-review-comment="${id}"]`).value.trim();if(!stars){toast('Choose a one-to-five-star rating');return}if(!comment){toast('A written review comment is required');return}submitSellerReview(id,stars,comment)})
     }
-    function openReviewDispute(orderId){$('#reviewDisputeOrder').value=orderId;$('#reviewDisputeReason').value='';$('#reviewDisputeDialog').showModal()}
+    function ownProfileData(){
+      const address=walletConnection.connected?String(walletConnection.accountAddress||'').toLowerCase():'';
+      if(!address)return {address:'',reviews:[],sales:[],pending:0};
+      const sales=paymentRows().filter(row=>row.verified&&row.seller===address);
+      return {address,reviews:sellerReviews.filter(row=>String(row.sellerAddress||'').toLowerCase()===address),sales:sales.filter(row=>row.settled&&!row.refunded),pending:sales.filter(row=>!row.settled).length};
+    }
+    function renderMyProfile(){
+      const summary=$('#myProfileSummary');if(!summary)return;
+      const data=ownProfileData(),reviewBox=$('#myProfileReviews'),salesBox=$('#myProfileSales');
+      $('#profileConnect').hidden=Boolean(data.address);
+      if(!data.address){summary.innerHTML='<p>Connect your seller wallet to open your profile.</p>';reviewBox.innerHTML='';salesBox.innerHTML='';$('#myProfileSync').textContent='';return;}
+      const identity=[...usernameListings.values()].find(row=>row.address===data.address)?.name;
+      summary.innerHTML=`<div><h2>${identity?'@'+escapeHtml(identity):'Your seller profile'}</h2><div class="profile-wallet">${escapeHtml(data.address)}</div><p class="profile-stat"><strong>${trustRatingsReady?escapeHtml(trustLabel(data.address)):'Rating unavailable'}</strong> · ${data.sales.length} completed sales · ${data.pending} active orders</p></div>`;
+      reviewBox.innerHTML=!reviewCommentsReady?'<div class="none">Reviews could not be verified. Refresh profile to try again.</div>':data.reviews.length?data.reviews.map(review=>`<div>${reviewCard(review)}${review.removed?'<p class="moderation-note">Removed from your public rating.</p>':review.disputed?'<p class="moderation-note">Dispute submitted — awaiting moderator decision.</p>':`<button type="button" class="button small" data-profile-dispute="${review.orderId}">Dispute rating or comment</button>`}${review.note?`<p class="moderation-note">Moderator decision: ${escapeHtml(review.note)}</p>`:''}</div>`).join(''):'<div class="none">No verified buyer reviews yet.</div>';
+      reviewBox.querySelectorAll('[data-profile-dispute]').forEach(button=>button.onclick=()=>openReviewDispute(Number(button.dataset.profileDispute)));
+      salesBox.innerHTML=data.sales.length?data.sales.slice().reverse().map(row=>{
+        const sale=sellerOrders.find(s=>s.marketComponent===row.component&&s.chainOrderId===row.id&&String(s.sellerAddress||'').toLowerCase()===data.address);
+        return `<article class="order"><div><strong>${escapeHtml(row.title||sale?.name||'Order #'+row.id)}</strong><p>Order #${row.id} · ${row.component===MARKET_COMPONENT_ADDRESS?'Current marketplace':'Earlier marketplace'}</p></div><div>${sale?`<strong>${xtm(sale.xtm)}</strong>`:''}<div class="status">Payment released</div></div></article>`;
+      }).join(''):'<div class="none">No completed sales found in the verified order history.</div>';
+      const partial=[...paymentSnapshots.values()].some(snapshot=>snapshot.error);
+      $('#myProfileSync').textContent=partial?'Some order history could not be refreshed. Sales and totals may be incomplete. Refresh profile to try again.':paymentSnapshots.size?'Sales are loaded from verified marketplace order history. Active orders and shipping details are in Orders received.':'Refresh profile to load your sales history.';
+    }
+    let profileRefreshTask=null;
+    async function refreshMyProfile(){
+      renderMyProfile();
+      if(!walletConnection.connected){await refreshMyItems();return;}
+      const account=walletConnection.accountAddress;
+      if(profileRefreshTask?.account===account)return profileRefreshTask.promise;
+      const task={account};profileRefreshTask=task;
+      task.promise=Promise.allSettled([refreshMyItems(),refreshTrustScores(),refreshPaymentCases()]).then(()=>{
+        if(walletConnection.connected&&walletConnection.accountAddress===account)renderMyProfile();
+      }).finally(()=>{if(profileRefreshTask===task)profileRefreshTask=null;});
+      return task.promise;
+    }
+    function openReviewDispute(orderId){const review=sellerReviews.find(row=>row.orderId===orderId);if(!walletConnection.connected||!reviewCommentsReady||!review||review.removed||review.disputed||String(review.sellerAddress).toLowerCase()!==String(walletConnection.accountAddress).toLowerCase()){toast('Connect the seller wallet and refresh reviews before disputing.');return;}$('#reviewDisputeOrder').value=orderId;$('#reviewDisputeReason').value='';$('#reviewDisputeDialog').showModal()}
     async function renderSellerOrders(){
       const box=$('#sellerOrderList');if(!box)return;renderSellerTrust();
       if(!walletConnection.connected){box.innerHTML='<div class="none">Connect your Tari wallet to see sales and reviews for your listings.</div>';return}
@@ -1340,7 +1376,7 @@
     document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',promptSavedBrowserWallet));
     document.addEventListener('visibilitychange',promptSavedBrowserWallet);
     showLegalNotice();render();renderWalletState();setPage(pageFromHash(),false);refreshRates();refreshTrustScores();setInterval(refreshRates,60000);setInterval(refreshTrustScores,30000);restoreWalletSession();
-    $('#refreshMyItems').onclick=refreshMyItems;$('#editItemForm').onsubmit=saveMyItem;$('#closeEditItem').onclick=()=>$('#editItemDialog').close();
+    $('#refreshMyItems').textContent='Refresh profile';$('#refreshMyItems').onclick=refreshMyProfile;$('#profileConnect').onclick=()=>$('#walletDialog').showModal();$('#editItemForm').onsubmit=saveMyItem;$('#closeEditItem').onclick=()=>$('#editItemDialog').close();
     const modelContext=document.modelContext;
     if(modelContext?.registerTool){
       try{void Promise.resolve(modelContext.registerTool({name:'quote_listing',title:'Quote listing',description:'Read the condition and fixed tTari item, shipping, and total prices for one marketplace listing.',inputSchema:{type:'object',properties:{listing_id:{type:'number'}},required:['listing_id'],additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input.listing_id!=='number')throw new Error('listing_id must be a number');const item=listings.find(x=>x.id===input.listing_id);if(!item)throw new Error('Listing not found');const quote=values(item);return{listing_id:item.id,listing:item.name,condition:listingCondition(item),item_tTari:quote.itemXtm,shipping_tTari:quote.shippingXtm,total_tTari:quote.totalXtm}}})).catch(()=>{})}catch{}
