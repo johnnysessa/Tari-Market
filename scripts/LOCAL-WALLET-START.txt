@@ -74,4 +74,4 @@ are shared by the hosted service. Delivery-decryption keys stay in this browser.
 Use the same local browser profile to retain access to encrypted shipping details.
 Switch wallet accounts and reconnect to test a separate buyer.
 
-Source: https://github.com/AllGasNoBrakes35/Tari-Market
+Source: https://github.com/johnnysessa/Tari-Market
