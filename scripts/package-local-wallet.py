@@ -8,6 +8,9 @@ output.parent.mkdir(exist_ok=True)
 files = [(root / "scripts/local-wallet.py", "start.py"),
          (root / "scripts/LOCAL-WALLET-START.txt", "START-HERE.txt"),
          (root / "LICENSE", "LICENSE"),
+         (root / "LICENSE-MIT-LEGACY", "LICENSE-MIT-LEGACY"),
+         (root / "LICENSING.md", "LICENSING.md"),
+         (root / "wallet-browser/TARI-SDK-LICENSE", "TARI-SDK-LICENSE"),
          (root / "dist/index.html", "site/index.html")]
 files.extend((p, "site/" + p.relative_to(root / "dist").as_posix())
              for p in sorted((root / "dist/assets").rglob("*")) if p.is_file())

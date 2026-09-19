@@ -128,7 +128,7 @@ The contract appends `seller_usernames` and `username_owners` to state and adds 
 
 ## Checkout and delivery privacy
 
-The Buy action opens a dedicated purchase screen with item details and payment information. The buyer reviews one item plus seller-set shipping before approving a wallet transaction. The checkout has a ten-minute review window; XTM prices remain fixed while USD reference values can change. Network fees are separate, with a maximum transaction fee of 0.02 tTari in the current request flow.
+The Buy action opens a dedicated purchase screen with item details and payment information. The buyer reviews one item plus seller-set shipping before approving a wallet transaction. The checkout has a ten-minute review window; XTM prices remain fixed while USD reference values can change. Network fees are separate, with a maximum transaction fee of 0.05 tTari in the current request flow.
 
 Recipient name is **optional**: buyers may leave it blank or enter **Resident**. Shipping inputs are separated into street address, apartment/unit, city, state/region, postal code, and country, with applicable fields marked optional.
 
@@ -549,7 +549,7 @@ account until the request is reconciled. Do not clear browser storage to bypass
 this protection; check wallet Requests and Transactions. Browser storage and tab
 locks cannot prevent transactions initiated on another device or directly in a wallet.
 
-The maximum network fee is 0.02 tTari for provider, WalletConnect and local Asset
+The maximum network fee is 0.05 tTari for provider, WalletConnect and local Asset
 Vault transactions, consistently displayed and enforced by the updated launcher.
 The optional browser test wallet retains its existing 0.3 tTari cap. These are caps,
 not estimates or guaranteed costs. No marketplace template/component update is needed.
@@ -661,3 +661,7 @@ shortcut and the original missing-recipient-vault regression.
 The user confirmed a successful receipt release with the previous vault-resolution fix on
 September 17. This is one reported end-to-end result, not validation of every payment path.
 
+
+### September 19, 2026 — local wallet fee fix
+
+Raised the provider, WalletConnect and local Asset Vault network-fee cap to 0.05 tTari. A listing estimate of 20,060 atomic units exceeded the previous 20,000 cap; the new cap is 50,000. Browser test wallets retain their existing 0.3 tTari cap. Simulation, fee validation and explicit wallet approval remain required. Error messages now include the fee estimate and retain the end of simulation rejection details. Existing local installations must update their launcher and site assets together, restart the launcher, and refresh the browser.

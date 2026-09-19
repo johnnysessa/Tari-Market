@@ -99,7 +99,7 @@
     const SECURITY_UPGRADE_READY=true;
     const TRUSTED_MARKET_COMPONENTS=new Set([MARKET_COMPONENT_ADDRESS,PREVIOUS_MARKET_COMPONENT,'component_2f28005895aac7dfa3efed328980ebc0ecd8b26c3c1e06945c249503ca149cf9','component_9e106bbe0e74d4abd9585cc4e3cc148ce65b69fca16848b0f3dc647d03558e15']);
     const newPurchasesReady=()=>Boolean(MARKET_COMPONENT_ADDRESS)&&ITEM_PRICE_FEE_READY&&SECURITY_UPGRADE_READY&&SELLER_USERNAMES_READY;
-    const MAX_TRANSACTION_FEE=20000;
+    const MAX_TRANSACTION_FEE=50000;
     const ESMERALDA_NETWORK_BYTE=38;
     const PRICE_URL='https://api.coingecko.com/api/v3/simple/price?ids=minotari&vs_currencies=usd&include_last_updated_at=true';
     const bundledRates={xtmUsd:0.00169228,updatedAt:1789299790000};

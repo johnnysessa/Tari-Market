@@ -115,9 +115,9 @@ class Wallet:
             if any(params.get(name) for name in ("other_signers", "signatures", "lock_ids")):
                 raise WalletError("Additional signers or external input locks are not supported.")
             expected_fee = [{"CallMethod": {"call": {"Address": account["component_address"]},
-                "method": "pay_fee", "args": [{"Literal": "194e20"}]}}]
+                "method": "pay_fee", "args": [{"Literal": "19c350"}]}}]
             if body.get("fee_instructions") != expected_fee:
-                raise WalletError("Network fee must be capped at 0.02 tTari from the connected account.")
+                raise WalletError("Network fee must be capped at 0.05 tTari from the connected account.")
             if not isinstance(body.get("instructions"), list) or not 1 <= len(body["instructions"]) <= 16:
                 raise WalletError("Invalid instruction count.")
             # The reviewed v0.12 create_listing only changes marketplace state.
@@ -138,10 +138,10 @@ class Wallet:
             outcome = simulation.get("result", {}).get("finalize", {}).get("result")
             if not isinstance(outcome, dict) or set(outcome) != {"Accept"}:
                 raise WalletError("Transaction simulation failed. No approval request was created and no network fee was charged. " +
-                                  json.dumps(outcome, ensure_ascii=True)[:300])
+                                  json.dumps(outcome, ensure_ascii=True)[-3000:])
             required = simulation.get("required_fees")
-            if type(required) is not int or not 0 <= required <= 20000:
-                raise WalletError("The simulation could not confirm the 0.02 tTari fee limit. Nothing was submitted.")
+            if type(required) is not int or not 0 <= required <= 50000:
+                raise WalletError(f"Fee check failed. Estimated fee: {required!r}; format: {type(required).__name__}; limit: 50000 atomic units (0.05 tTari). Nothing was submitted.")
             request = {"transaction": detected, "seal_signer": account["owner_key_id"],
                 "other_signers": [], "signatures": [], "lock_ids": [], "ttl_secs": 600}
             if time.monotonic() - started > 90:

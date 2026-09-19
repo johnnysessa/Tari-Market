@@ -2,6 +2,7 @@ TARI MARKET — LOCAL ESMERALDA TEST
 
 This launcher connects a local copy of Tari Market to Asset Vault v0.40.0.
 It does not replace your wallet or republish the template/component.
+Maximum network fee: 0.05 tTari; review and approve each transaction in Asset Vault.
 Use test funds only. Live listing and purchase testing is still required.
 
 1. KEEP YOUR WALLET RUNNING

@@ -61,7 +61,7 @@ def transaction():
     return {"transaction": {"V1": {"network": 38, "dry_run": False,
         "instructions": [{"CallMethod": {"method": "create_listing"}}], "inputs": [],
         "nonce": "1789488366123456789", "fee_instructions": [{"CallMethod": {
-            "call": {"Address": ADDRESS}, "method": "pay_fee", "args": [{"Literal": "194e20"}]}}]}},
+            "call": {"Address": ADDRESS}, "method": "pay_fee", "args": [{"Literal": "19c350"}]}}]}},
         "seal_signer": {"Derived": {"key_index": 0}}, "other_signers": [], "signatures": [], "lock_ids": []}
 
 
@@ -137,9 +137,23 @@ class Tests(unittest.TestCase):
         dry = next(p for m, p in self.wallet.calls if m == "transactions.submit_dry_run")
         self.assertEqual(dry["transaction"], self.wallet.created_transaction)
 
+    def test_reported_listing_fee_fits_new_cap_and_still_requires_approval(self):
+        for fee in (20060, 50000):
+            with self.subTest(fee=fee):
+                wallet = FakeWallet()
+                original = wallet.rpc
+                def rpc(method, params):
+                    result = original(method, params)
+                    if method == "transactions.submit_dry_run":
+                        result["required_fees"] = fee
+                    return result
+                wallet.rpc = rpc
+                self.assertEqual(wallet.create_request(transaction()), {"approval_request_id": 7})
+                self.assertNotIn("transaction_requests.submit", [m for m, _ in wallet.calls])
+
     def test_failed_unknown_and_over_budget_simulations_never_create_request(self):
         for result in ({"result": {"finalize": {"result": {"AcceptFeeRejectRest": [{}, "missing vault"]}}}},
-                       {}, {"result": {"finalize": {"result": {"Accept": {}}}}, "required_fees": 20001}):
+                       {}, {"result": {"finalize": {"result": {"Accept": {}}}}, "required_fees": 50001}):
             with self.subTest(result=result):
                 wallet = FakeWallet()
                 original = wallet.rpc
