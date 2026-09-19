@@ -1,5 +1,7 @@
 > Current active contract: v0.12.0. Earlier v0.11 rollout sections below are historical. See My Items at the end and contracts/deployment/esmeralda.json for the active deployment.
 
+**GitHub repository:** [johnnysessa/Tari-Market](https://github.com/johnnysessa/Tari-Market)
+
 # Tari Market
 
 Tari Market is an open-source marketplace prototype for Tari Ootle. All current listings, shipping, escrow payments, marketplace fees and network fees use tTari on Esmeralda testnet. tTari has no monetary value. Prices are displayed only in tTari. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
@@ -158,7 +160,7 @@ The fee supports app maintenance and future development of Tari. It is calculate
 
 Under v0.12.0, the platform does not receive escrow withdrawals. After a successful sale, the original seller separately approves `pay_marketplace_fee`, supplying a new tTari payment bucket from their wallet. The contract checks the signer, resource, exact fee, completed-sale status, and whether the fee was already paid. Refunded orders owe no fee. Eligible sellers have a **Pay separate 3% fee** action after a completed, non-refunded sale.
 
-Configured fee recipient (AllGasNoBrakes):
+Configured fee recipient (owner account):
 `component_6f33184eb2f3606248f78d54a9d466d5a520356f72d50c3febafa537286cf41c`.
 This is an account component, not a signer public key. The fee is **separately seller-approved**, not automatically withheld from escrow.
 
@@ -427,7 +429,7 @@ Current deployment identities and accepted transaction IDs are recorded in `cont
 
 ## Owner post removal
 
-**Remove posts** appears when the original AllGasNoBrakes owner account is connected.
+**Remove posts** appears when the original configured owner account is connected.
 The owner can review current and previous marketplace listings, enter a public reason,
 and approve **Remove post** in the wallet. **Restore post** reverses a mistaken removal.
 Delegated dispute admins do not receive this separate owner-only permission.
