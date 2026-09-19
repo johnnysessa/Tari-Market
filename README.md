@@ -6,7 +6,7 @@
 
 Tari Market is an open-source marketplace prototype for Tari Ootle. All current listings, shipping, escrow payments, marketplace fees and network fees use tTari on Esmeralda testnet. tTari has no monetary value. Prices are displayed only in tTari. The website includes product browsing, wallet checkout, seller profiles, escrow order management, disputes, and an admin workspace.
 
-**[Open Tari Market](https://tari-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [MIT license](LICENSE)
+**[Open Tari Market](https://tari-market.johnnytsunami14.chatgpt.site)** · [Security review](SECURITY_REVIEW.md) · [AGPL-3.0 license](LICENSE)
 
 Updated September 17, 2026. Current contract source: **v0.12.0**.
 
@@ -338,7 +338,7 @@ Compiled historical artifacts are preserved for provenance. Their presence is no
 
 ## License
 
-Tari Market is released under the [MIT License](LICENSE). Retain applicable third-party notices when redistributing vendored dependencies.
+Tari Market is released under [GNU AGPL v3 only](LICENSE) (SPDX: `AGPL-3.0-only`) beginning with the September 19, 2026 licensing-change commit. See [licensing and legacy MIT notices](LICENSING.md). Earlier MIT releases and third-party license notices remain valid.
 
 ## Browser test wallet (Esmeralda only)
 
@@ -660,3 +660,4 @@ shortcut and the original missing-recipient-vault regression.
 
 The user confirmed a successful receipt release with the previous vault-resolution fix on
 September 17. This is one reported end-to-end result, not validation of every payment path.
+
