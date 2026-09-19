@@ -1274,7 +1274,7 @@
     function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
     function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
     const legalDialog=$('#legalDialog'),legalAccept=$('#legalAccept'),legalEnter=$('#legalEnter');
-    function legalNoticeAccepted(){try{return sessionStorage.getItem('xtm-market-legal-notice-v2')==='accepted'}catch{return false}}
+    function legalNoticeAccepted(){try{return sessionStorage.getItem('xtm-market-legal-notice-v3')==='accepted'}catch{return false}}
     let legalReachedBottom=false;
     function updateLegalScroll(){
       if(!legalDialog.open)return;
@@ -1284,6 +1284,7 @@
     }
     function openLegalNotice(){
       legalReachedBottom=false;
+      $('#legalFullTerms').open=false;
       legalAccept.checked=false;
       legalAccept.disabled=true;
       legalEnter.disabled=true;
@@ -1295,10 +1296,11 @@
     function showLegalNotice(){if(!legalNoticeAccepted()&&!legalDialog.open)openLegalNotice()}
     $('#legalReopen').addEventListener('click',openLegalNotice);
     legalDialog.addEventListener('scroll',updateLegalScroll);
+    $('#legalFullTerms').addEventListener('toggle',updateLegalScroll);
     window.addEventListener('resize',updateLegalScroll);
     legalDialog.addEventListener('cancel',event=>event.preventDefault());
     legalAccept.addEventListener('change',updateLegalScroll);
-    $('#legalForm').addEventListener('submit',event=>{event.preventDefault();if(!legalReachedBottom||!legalAccept.checked)return;try{sessionStorage.setItem('xtm-market-legal-notice-v2','accepted')}catch{}legalDialog.close()});
+    $('#legalForm').addEventListener('submit',event=>{event.preventDefault();if(!legalReachedBottom||!legalAccept.checked)return;try{sessionStorage.setItem('xtm-market-legal-notice-v3','accepted')}catch{}legalDialog.close()});
     $('#feeBack').onclick=()=>setPage('market');
     $('#purchaseBack').onclick=()=>setPage('market');
     $('#purchaseEscrowHelp').onclick=()=>setPage('escrow');
